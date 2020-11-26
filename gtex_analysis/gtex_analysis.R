@@ -79,4 +79,9 @@ gtex_container <- run_gsea_one_factor(gtex_container, factor_select=9, method="f
                                       thresh=0.005, db_use="GO", num_iter=10000)
 gtex_container$plots$gsea[['Factor2']][['up']]
 
+# plot associations with meta data
+gtex_container <- plot_meta_associations(gtex_container)
+gtex_container$plots$meta_associations
+
+
 

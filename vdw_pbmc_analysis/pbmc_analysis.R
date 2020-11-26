@@ -111,10 +111,19 @@ pbmc_container <- get_all_subclust_plots(pbmc_container,
 
 render_subtype_plots(pbmc_container)
 
+
 # get associations between proportions of major cell types and factors
 pbmc_container <- get_ctype_prop_associations(pbmc_container,
                                               stat_type='adj_pval')
 pbmc_container$plots$ctype_prop_factor_associations
 
+
+# run stability analysis
+pbmc_container <- run_stability_analysis(pbmc_container, downsample_ratio=0.9,
+                                         n_iter=500)
+
+# look at number of significant genes for additional factors
+pbmc_container <- get_min_sig_genes(pbmc_container,donor_rank_range=c(4:9),thresh=0.05)
+pbmc_container$plots$min_sig_genes
 
 

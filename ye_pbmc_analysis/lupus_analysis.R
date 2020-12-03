@@ -1,6 +1,15 @@
 
 library(scITD)
+library(Seurat)
+library(SeuratDisk)
 
+# read the h5seurat file
+pbmc <- LoadH5Seurat("/home/jmitchel/data/lupus_data/Lupus_study_adjusted.h5seurat")
+
+# normalize the data
+pbmc <- NormalizeData(pbmc)
+
+# prep the container
 pbmc_scMinimal <- seurat_to_scMinimal(pbmc,normalize_counts=FALSE, 
                                       metadata_cols=c('ind_cov_batch_cov',
                                                       "Genotype.ID",
@@ -46,7 +55,7 @@ gc()
 
 # finish prepping the data
 pbmc_container <- get_ctype_data(pbmc_container)
-pbmc_container <- get_ctype_vargenes(pbmc_container, method="empir", thresh=0.01)
+pbmc_container <- get_ctype_vargenes(pbmc_container, method="norm_var", thresh=1000)
 
 # determine appropriate variance scaling parameter
 pbmc_container <- optimize_var_scale_power(pbmc_container, min_ranks_test=c(5,8,5),
@@ -59,5 +68,30 @@ pbmc_container$plots$var_scale_plot
 pbmc_container <- determine_ranks_tucker(pbmc_container, max_ranks_test=c(6,10,5),
                                          method='svd', num_iter=5, shuffle_level='cells')
 pbmc_container$plots$rank_determination_plot
+
+# run tucker
+pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(8,16,7), shuffle=FALSE)
+
+# plot donor scores first by clustering by sex
+pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex','Status','pool'),
+                                    cluster_by_meta='Status', show_donor_ids = FALSE)
+pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('Status','pool'),
+                                    cluster_by_meta='pool', show_donor_ids = FALSE)
+pbmc_container$plots$donor_matrix
+
+# plot donor scores with row clustering
+pbmc_container <- plot_donor_matrix(pbmc_container, show_donor_ids = FALSE)
+pbmc_container$plots$donor_matrix
+
+# show all loadings plots
+pbmc_container <- get_all_lds_factor_plots(pbmc_container, use_sig_only=FALSE, 
+                                           nonsig_to_zero=FALSE,
+                                           display_genes=FALSE,
+                                           gene_callouts=FALSE)
+render_all_lds_plots(pbmc_container, n_rows=2)
+
+# get significant genes
+pbmc_container <- run_jackstraw(pbmc_container, n_fibers=100, n_iter=500)
+
 
 

@@ -26,6 +26,10 @@ pbmc_container <- identify_sex_metadata(pbmc_container)
 pbmc_container <- get_ctype_data(pbmc_container)
 pbmc_container <- get_ctype_vargenes(pbmc_container, method="empir", thresh=0.01)
 
+# or try norm var
+pbmc_container <- get_ctype_data(pbmc_container)
+pbmc_container <- get_ctype_vargenes(pbmc_container, method="norm_var", thresh=250)
+
 # determine appropriate variance scaling parameter
 pbmc_container <- optimize_var_scale_power(pbmc_container, min_ranks_test=c(5,8,5),
                                            max_ranks_test=c(10,15,5),
@@ -43,7 +47,9 @@ pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(5,8,5), shuffle=FALSE)
 
 # plot donor scores
 pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex','lanes'),
-                                    cluster_by_meta='sex', show_donor_ids = FALSE)
+                                    cluster_by_meta='sex', show_donor_ids = TRUE)
+pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex','lanes'),
+                                    show_donor_ids = FALSE)
 pbmc_container$plots$donor_matrix
 
 # get significant genes
@@ -58,12 +64,20 @@ pbmc_container <- get_all_lds_factor_plots(pbmc_container, use_sig_only=FALSE,
                                            gene_callouts=FALSE)
 render_all_lds_plots(pbmc_container, n_rows=2)
 
+
+# plot loadings with significant genes only
+pbmc_container <- get_all_lds_factor_plots(pbmc_container, use_sig_only=TRUE,
+                                           nonsig_to_zero=TRUE, annot='none',
+                                           sig_thresh=0.05, display_genes=FALSE,
+                                           gene_callouts=FALSE)
+render_all_lds_plots(pbmc_container, n_rows=2)
+
 # plot loadings with significant genes only and gene callouts
-pbmc_container <- get_all_lds_factor_plots(pbmc_container, use_sig_only=TRUE, 
+pbmc_container <- get_all_lds_factor_plots(pbmc_container, use_sig_only=TRUE,
                                            nonsig_to_zero=TRUE, annot='none',
                                            sig_thresh=0.05, display_genes=FALSE,
                                            gene_callouts=TRUE,
-                                           callout_n_gene_per_ctype=5, 
+                                           callout_n_gene_per_ctype=5,
                                            callout_ctypes=list(c(NULL),
                                                                c('CD4+ T',
                                                                  'cMonocyte'),

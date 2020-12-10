@@ -44,12 +44,15 @@ pbmc_container$plots$rank_determination_plot
 
 # run tucker
 pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(5,8,5), shuffle=FALSE)
+pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(5,8,5), shuffle=FALSE, batch_var='lanes')
+pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(5,10,5), shuffle=FALSE)
+
 
 # plot donor scores
 pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex','lanes'),
                                     cluster_by_meta='sex', show_donor_ids = TRUE)
 pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex','lanes'),
-                                    show_donor_ids = FALSE)
+                                    show_donor_ids = TRUE)
 pbmc_container$plots$donor_matrix
 
 # get significant genes
@@ -69,7 +72,7 @@ render_all_lds_plots(pbmc_container, n_rows=2)
 pbmc_container <- get_all_lds_factor_plots(pbmc_container, use_sig_only=TRUE,
                                            nonsig_to_zero=TRUE, annot='none',
                                            sig_thresh=0.05, display_genes=FALSE,
-                                           gene_callouts=FALSE)
+                                           gene_callouts=TRUE)
 render_all_lds_plots(pbmc_container, n_rows=2)
 
 # plot loadings with significant genes only and gene callouts
@@ -93,6 +96,11 @@ pbmc_container <- plot_donor_sig_genes(pbmc_container, factor_select=2,
                                        top_n_per_ctype=c(30,30), 
                                        ctypes_use=c('CD4+ T','cMonocyte'))
 pbmc_container$plots$donor_sig_genes$Factor2
+
+pbmc_container <- plot_donor_sig_genes(pbmc_container, factor_select=3, 
+                                       top_n_per_ctype=c(5,30), 
+                                       ctypes_use=c('CD4+ T','CD8+ T'))
+pbmc_container$plots$donor_sig_genes$Factor3
 
 pbmc_container <- plot_donor_sig_genes(pbmc_container, factor_select=4, 
                                        top_n_per_ctype=c(5,20), 

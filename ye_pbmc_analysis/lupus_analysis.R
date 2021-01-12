@@ -8,8 +8,14 @@ library(SeuratDisk)
 # or read the h5seurat file
 pbmc <- LoadH5Seurat("/home/jmitchel/data/lupus_data/Lupus_study_adjusted.h5seurat")
 
+# or load up the subsetted dataset
+pbmc <- readRDS('/home/jmitchel/data/lupus_data/lupus_subsetted_seurat_v2.rds')
+
 # Get regular normalization of the data if using h5
 pbmc <- NormalizeData(pbmc)
+
+# convert batch to factor for meta association analysis
+pbmc@meta.data$batch_cov <- factor(pbmc@meta.data$batch_cov,levels=unique(pbmc@meta.data$batch_cov))
 
 # prep the container
 pbmc_scMinimal <- seurat_to_scMinimal(pbmc,normalize_counts=FALSE,
@@ -80,7 +86,7 @@ gc()
 
 # finish prepping the data
 pbmc_container <- get_ctype_data(pbmc_container)
-pbmc_container <- get_ctype_vargenes(pbmc_container, method="norm_var", thresh=1000)
+pbmc_container <- get_ctype_vargenes(pbmc_container, method="norm_var", thresh=500)
 
 # trying with my most recent batch correct method
 pbmc_container <- get_ctype_data(pbmc_container)
@@ -185,17 +191,45 @@ pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(7,10,4), shuffle=FALSE)
 pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(9,20,4), shuffle=FALSE)
 pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(7,10,4), batch_var='pool')
 pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(12,16,4), shuffle=FALSE)
-pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(12,15,4), shuffle=FALSE)
+pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(12,24,4), shuffle=FALSE)
+pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(14,20,4), shuffle=FALSE)
 
+# get metadata associations for donor scores plot
+pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('sex','pool'))
 
 # plot donor scores first by clustering by sex
 pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex','Status','pool','processing'),
-                                    cluster_by_meta='Status', show_donor_ids = FALSE)
+                                    cluster_by_meta='pool', show_donor_ids = FALSE,add_meta_associations=T)
 pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex','Status','pool','processing'),
-                                    show_donor_ids = FALSE)
-pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('Status','pool'),
-                                    cluster_by_meta='pool', show_donor_ids = FALSE)
+                                    show_donor_ids = FALSE, add_meta_associations=T)
+pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('Status'),
+                                    cluster_by_meta='Status', show_donor_ids = FALSE,
+                                    add_meta_associations=T)
+pbmc_container <- plot_donor_matrix(pbmc_container,show_donor_ids = FALSE, add_meta_associations=T)
 pbmc_container$plots$donor_matrix
+
+# compare do decomp with batch effect
+pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(15,25,4), shuffle=FALSE)
+pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('sex','pool'))
+tucker_res1 <- pbmc_container$tucker_results
+meta_anno1 <- pbmc_container$meta_associations
+# pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(8,16,4), shuffle=FALSE, batch_var='pool')
+pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(12,24,4), shuffle=FALSE, batch_var='pool')
+# pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(10,20,4), shuffle=FALSE, batch_var='pool')
+pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('sex','pool'))
+tucker_res2 <- pbmc_container$tucker_results
+meta_anno2 <- pbmc_container$meta_associations
+decomp_names <- c('no combat','with combat')
+myhmap <- compare_decompositions(tucker_res1,tucker_res2,decomp_names,meta_anno1,meta_anno2,comparison='dscores')
+myhmap
+
+# plot meta associations
+pbmc_container <- plot_meta_associations(pbmc_container,vars_test=c('sex','pool'),anno_side='top')
+pbmc_container <- plot_meta_associations(pbmc_container,vars_test=c('pool'))
+draw(pbmc_container$plots$meta_associations)
+
+# plot donor scores with associations together
+pbmc_container <- plot_donor_matrix(pbmc_container,show_donor_ids = FALSE,add_meta_associations=TRUE)
 
 # plot donor scores with row clustering
 pbmc_container <- plot_donor_matrix(pbmc_container, show_donor_ids = FALSE)

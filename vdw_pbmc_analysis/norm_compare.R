@@ -28,13 +28,18 @@ pbmc_container <- identify_sex_metadata(pbmc_container)
 # finish prepping the data
 pbmc_container <- get_ctype_data(pbmc_container)
 pbmc_container <- get_ctype_vargenes(pbmc_container, method="empir", thresh=0.01)
+pbmc_container <- get_ctype_vargenes(pbmc_container, method="norm_var", thresh=500)
 
 # run tucker
 pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(5,8,5), shuffle=FALSE)
 
+# get factor associations with metadata
+pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('sex','lanes'))
+
 # plot donor scores
 pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex','lanes'),
-                                    cluster_by_meta='sex', show_donor_ids = FALSE)
+                                    add_meta_associations=TRUE,
+                                    show_donor_ids = FALSE)
 pbmc_container$plots$donor_matrix
 
 # get significant genes
@@ -64,6 +69,9 @@ top_up_genes <- sapply(names(top_up_genes),function(x){
 top_up_genes <- convert_gn(pbmc_container,top_up_genes)
 print(top_up_genes)
 
+# save decomposition in object for comparison later
+tucker_res1 <- pbmc_container$tucker_results
+meta_anno1 <- pbmc_container$meta_associations
 
 
 
@@ -94,13 +102,18 @@ pbmc_container_tm <- identify_sex_metadata(pbmc_container_tm)
 # finish prepping the data
 pbmc_container_tm <- get_ctype_data(pbmc_container_tm)
 pbmc_container_tm <- get_ctype_vargenes(pbmc_container_tm, method="empir", thresh=0.01)
+pbmc_container_tm <- get_ctype_vargenes(pbmc_container_tm, method="norm_var", thresh=500)
 
 # run tucker
 pbmc_container_tm <- run_tucker_ica(pbmc_container_tm, ranks=c(5,8,5), shuffle=FALSE)
 
+# get factor associations with metadata
+pbmc_container_tm <- get_meta_associations(pbmc_container_tm,vars_test=c('sex','lanes'))
+
 # plot donor scores
 pbmc_container_tm <- plot_donor_matrix(pbmc_container_tm, meta_vars=c('sex','lanes'),
-                                    cluster_by_meta='sex', show_donor_ids = FALSE)
+                                    add_meta_associations=TRUE,
+                                    show_donor_ids = FALSE)
 pbmc_container_tm$plots$donor_matrix
 
 
@@ -131,4 +144,16 @@ top_up_genes <- sapply(names(top_up_genes),function(x){
 top_up_genes <- convert_gn(pbmc_container_tm,top_up_genes)
 print(top_up_genes)
 
+# save decomposition in object for comparison later
+tucker_res2 <- pbmc_container_tm$tucker_results
+meta_anno2 <- pbmc_container_tm$meta_associations
 
+
+
+# compare the two decompositions
+decomp_names <- c('regular normalization','trim-mean normalization')
+myhmap1 <- compare_decompositions(tucker_res1,tucker_res2,decomp_names,meta_anno1,meta_anno2,comparison='dscores')
+myhmap1 # comparing donor scores
+
+myhmap2 <- compare_decompositions(tucker_res1,tucker_res2,decomp_names,meta_anno1,meta_anno2,comparison='loadings')
+myhmap2 # comparing gene loadings

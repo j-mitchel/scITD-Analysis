@@ -201,52 +201,52 @@ for (d in donors) {
   }
 }
 
+# checking that still have same number of donors
+donors <- unique(as.character(pbmc@meta.data$Genotype.ID))
+print(length(donors))
+
+# saving subsetted seurat object so can revisit this step later and try different normalization schemes
+saveRDS(pbmc,file='/home/jmitchel/data/lupus_data/lupus_subsetted_seurat.rds',compress = "xz")
 
 
 
 
 
+pbmc <- readRDS('/home/jmitchel/data/lupus_data/lupus_subsetted_seurat.rds')
+
+# check that donors only in one batch
+donors <- unique(pbmc@meta.data$Genotype.ID)
+for (d in donors) {
+  # subset to the donor
+  tmp <- pbmc@meta.data[pbmc@meta.data$Genotype.ID==d,]
+  # get number of batches donor is in
+  if (sum(table(tmp$batch_cov)>0)>1) {
+    print(sum(table(tmp$batch_cov)>0)>1)
+  }
+}
+
+# get status breakdown for each batch
+batches <- unique(pbmc@meta.data$batch_cov)
+for (b in batches) {
+  tmp <- pbmc@meta.data[pbmc@meta.data$batch_cov==b,]
+  tmp <- tmp[,c('Genotype.ID','Status')]
+  tmp <- unique(tmp)
+  rownames(tmp) <- tmp$Genotype.ID
+  print(table(tmp$Status))
+}
 
 
-# # for the two smallest batches, check that they each contain unique donors
-# tmp <- pbmc@meta.data[pbmc@meta.data$batch_cov=='dmx_flare1',]
-# dns1 <- unique(tmp$Genotype.ID)
-# tmp <- pbmc@meta.data[pbmc@meta.data$batch_cov=='dmx_flare2',]
-# dns2 <- unique(tmp$Genotype.ID)
-# print(sum(dns1 %in% dns2))
-# 
-# # since they both contain some of same donors and are so small I will remove one of these pools from the analysis
-# batch_rem <- c("dmx_flare2")
-# cells_rem <- rownames(pbmc@meta.data[pbmc@meta.data$batch_cov %in% batch_rem,])
-# pbmc <- subset(pbmc, cells = cells_rem, invert=TRUE)
+# need to normalize the data and correct batch class
+pbmc <- readRDS('/home/jmitchel/data/lupus_data/lupus_subsetted_seurat.rds')
 
-# # for the two other flare batches, check that they each contain unique donors
-# tmp <- pbmc@meta.data[pbmc@meta.data$batch_cov=='dmx_flare1',]
-# dns1 <- unique(tmp$Genotype.ID)
-# tmp <- pbmc@meta.data[pbmc@meta.data$batch_cov=='dmx_flare2',]
-# dns2 <- unique(tmp$Genotype.ID)
-# print(sum(dns1 %in% dns2))
+# Get regular normalization of the data if using h5
+pbmc <- NormalizeData(pbmc)
 
+# convert batch to factor for meta association analysis
+pbmc@meta.data$batch_cov <- factor(pbmc@meta.data$batch_cov,levels=unique(pbmc@meta.data$batch_cov))
 
-
-# # now limit to one sample per donor, keeping all samples in smallest batches though
-# # first determine which donors still have multiple samples across batches
-# donors <- unique(pbmc@meta.data$Genotype.ID)
-# for (d in donors) {
-#   # subset to the donor
-#   tmp <- pbmc@meta.data[pbmc@meta.data$Genotype.ID==d,]
-#   # get number of batches donor is in
-#   if (sum(table(tmp$batch_cov)>0)>1) {
-#     'ind_cov_batch_cov'
-#   }
-# }
-
-
-
-
-
-
-
+# save new file
+saveRDS(pbmc,file='/home/jmitchel/data/lupus_data/lupus_subsetted_seurat_v2.rds',compress = "xz")
 
 
 

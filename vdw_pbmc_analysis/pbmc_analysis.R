@@ -15,7 +15,7 @@ pbmc_scMinimal <- instantiate_scMinimal(count_data=pbmc_counts, meta_data=pbmc_m
 pbmc_container <- make_new_container(pbmc_scMinimal,
                                      ctypes_use = c("CD4+ T", "CD8+ T", "cMonocyte", "CD56(dim) NK", "B"),
                                      gn_convert = feature.names, scale_var = TRUE,
-                                     var_scale_power = 1.25,
+                                     var_scale_power = 2,
                                      tucker_type = 'sparse', rotation_type = 'ica',
                                      ncores = 30, rand_seed = 10)
 
@@ -25,10 +25,6 @@ pbmc_container <- identify_sex_metadata(pbmc_container)
 # finish prepping the data
 pbmc_container <- get_ctype_data(pbmc_container)
 pbmc_container <- get_ctype_vargenes(pbmc_container, method="empir", thresh=0.01)
-
-# or try norm var
-pbmc_container <- get_ctype_data(pbmc_container)
-pbmc_container <- get_ctype_vargenes(pbmc_container, method="norm_var", thresh=250)
 
 # determine appropriate variance scaling parameter
 pbmc_container <- optimize_var_scale_power(pbmc_container, min_ranks_test=c(5,8,5),
@@ -44,15 +40,17 @@ pbmc_container$plots$rank_determination_plot
 
 # run tucker
 pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(5,8,5), shuffle=FALSE)
-pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(5,8,5), shuffle=FALSE, batch_var='lanes')
-pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(5,10,5), shuffle=FALSE)
 
+# or can first get rid of batch effect associated with 10x lanes
+pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(5,8,5), shuffle=FALSE, batch_var='lanes')
+
+# get factor-meta data associations
+pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('sex','lanes'))
 
 # plot donor scores
 pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex','lanes'),
-                                    cluster_by_meta='sex', show_donor_ids = TRUE)
-pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex','lanes'),
-                                    show_donor_ids = TRUE)
+                                    show_donor_ids = TRUE,
+                                    add_meta_associations=TRUE)
 pbmc_container$plots$donor_matrix
 
 # get significant genes

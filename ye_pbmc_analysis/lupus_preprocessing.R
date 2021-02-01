@@ -252,4 +252,39 @@ saveRDS(pbmc,file='/home/jmitchel/data/lupus_data/lupus_subsetted_seurat_v2.rds'
 
 
 
+# ## need to remove cells with large fraction of UMIs from 1 gene as these can affect the results considerably
+
+pbmc <- readRDS('/home/jmitchel/data/lupus_data/lupus_subsetted_seurat_v2.rds')
+count_data <- pbmc@assays$RNA@counts
+
+thresh <- .3
+ncells <- ncol(count_data)
+csub <- c(seq(1,ncells,50000),ncells)
+all_cells_keep <- c()
+for (i in 1:(length(csub)-1)) {
+  print(i)
+  tmp <- count_data[,(csub[i]+1):csub[i+1]]
+  
+  maxvals <- apply(tmp,MARGIN=2,FUN=max)
+  lib_sizes <- colSums(tmp)
+  fracs <- maxvals/lib_sizes
+  
+  cells_keep <- names(fracs)[fracs < thresh]
+  
+  all_cells_keep <- c(all_cells_keep,cells_keep)
+  
+  print(paste0(length(cells_keep),' cells kept'))
+  print('')
+  
+}
+
+pbmc <- subset(pbmc,cells = all_cells_keep)
+dim(pbmc@assays$RNA@counts)
+dim(pbmc@meta.data)
+
+saveRDS(pbmc,file='/home/jmitchel/data/lupus_data/lupus_subsetted_seurat_v3.rds',compress = "xz")
+
+
+
+
 

@@ -2,15 +2,226 @@
 library(scITD)
 
 # counts matrix
-pbmc_counts <- readRDS('/home/jmitchel/data/van_der_wijst/pbmc_counts.rds')
+pbmc_counts <- readRDS('/home/jmitchel/data/van_der_wijst/pbmc_counts_v2.rds')
+pbmc_counts <- readRDS('/home/jmitchel/data/van_der_wijst/pbmc_counts_v2_winsorized_simple.rds')
 
 # meta data matrix
-pbmc_meta <- readRDS('/home/jmitchel/data/van_der_wijst/pbmc_meta.rds')
+pbmc_meta <- readRDS('/home/jmitchel/data/van_der_wijst/pbmc_meta_v2.rds')
 
 # ensembl to gene name conversions
 feature.names <- readRDS('/home/jmitchel/data/van_der_wijst/genes.rds')
 
-# put data in project container
+# set up project parameters
+param_list <- initialize_params(ctypes_use = c("CD4+ T", "CD8+ T", "cMonocyte", "CD56(dim) NK", "B"),
+                                ncores = 30, rand_seed = 10)
+
+# pbmc_container <- make_new_container(count_data=pbmc_counts, meta_data=pbmc_meta,
+#                                      gn_convert = feature.names, params=param_list,
+#                                      label_donor_sex = TRUE, winsorize_param=2)
+# 
+# saveRDS(pbmc_container$scMinimal_full$count_data,file='/home/jmitchel/data/van_der_wijst/pbmc_counts_v2_winsorized.rds')
+# saveRDS(pbmc_counts,file='/home/jmitchel/data/van_der_wijst/pbmc_counts_v2_winsorized_simple.rds')
+
+pbmc_container <- make_new_container(count_data=pbmc_counts, meta_data=pbmc_meta,
+                                     gn_convert = feature.names, params=param_list,
+                                     label_donor_sex = TRUE)
+
+# pbmc_container <- form_tensor(pbmc_container, donor_min_cells=5, gene_min_cells=5,
+#                               norm_method='trim', scale_factor=10000,
+#                               vargenes_method='norm_var', vargenes_thresh=1000,
+#                               scale_var = TRUE, var_scale_power = 2)
+# 
+# pbmc_container <- form_tensor(pbmc_container, donor_min_cells=5, gene_min_cells=5,
+#                               norm_method='trim', scale_factor=10000,
+#                               vargenes_method='norm_var', vargenes_thresh=500,
+#                               scale_var = TRUE, var_scale_power = 2)
+# 
+# pbmc_container <- form_tensor(pbmc_container, donor_min_cells=5, gene_min_cells=5,
+#                               norm_method='trim', scale_factor=10000,
+#                               vargenes_method='anova', vargenes_thresh=.02,
+#                               scale_var = TRUE, var_scale_power = 2)
+
+pbmc_container <- form_tensor(pbmc_container, donor_min_cells=5, gene_min_cells=5,
+                              norm_method='trim', scale_factor=10000,
+                              vargenes_method='norm_var_pvals', vargenes_thresh=.1,
+                              scale_var = TRUE, var_scale_power = 2)
+
+pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(5,10,5),
+                                 tucker_type = 'regular', rotation_type = 'ica')
+
+# get factor-meta data associations
+pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('sex','lanes'))
+
+# plot donor scores
+pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex','lanes'),
+                                    show_donor_ids = TRUE,
+                                    add_meta_associations=TRUE)
+pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex','lanes'),
+                                    show_donor_ids = TRUE,
+                                    cluster_by_meta='sex',
+                                    add_meta_associations=TRUE)
+
+pbmc_container$plots$donor_matrix
+
+# pdf(file = "/home/jmitchel/figures/for_paper/pbmc_dscores.pdf", useDingbats = FALSE,
+#     width = 7, height = 7)
+# pbmc_container$plots$donor_matrix
+# dev.off()
+
+
+# get assistance with rank determination
+pbmc_container <- determine_ranks_tucker(pbmc_container, max_ranks_test=c(10,15,5),
+  shuffle_level='tensor', shuffle_within=NULL,
+  num_iter=10, batch_var=NULL,
+  norm_method='trim',
+  scale_factor=10000,
+  scale_var=TRUE,
+  var_scale_power=2)
+
+pbmc_container$plots$rank_determination_plot
+
+# pdf(file = "/home/jmitchel/figures/for_paper/pbmc_rank_determination_tensor.pdf", useDingbats = FALSE,
+#     width = 7, height = 7)
+# pbmc_container$plots$rank_determination_plot
+# dev.off()
+
+# optimize power for variance scaling
+pbmc_container <- optimize_var_scale_power(pbmc_container,c(1,1,5),c(10,15,5),.5,2)
+pbmc_container <- optimize_var_scale_power(pbmc_container,c(3,3,5),c(10,15,5),.5,2,tucker_type='sparse')
+pbmc_container$plots$var_scale_plot
+
+
+pbmc_container <- run_stability_analysis(pbmc_container, ranks=c(5,10,5), downsample_ratio=0.9, n_iter=1000,
+                       norm_method='trim', scale_factor=10000,
+                       batch_var=NULL, scale_var=TRUE,
+                       var_scale_power=2, tucker_type='regular',
+                       rotation_type='ica')
+
+pbmc_container$plots$stability_plot
+
+# pdf(file = "/home/jmitchel/figures/for_paper/pbmc_stability_analysis.pdf", useDingbats = FALSE,
+#     width = 3.5, height = 4)
+# pbmc_container$plots$stability_plot
+# dev.off()
+
+
+# get significant genes
+pbmc_container <- run_jackstraw(pbmc_container, ranks=c(5,10,5), n_fibers=100, n_iter=1500,
+                                tucker_type='regular', rotation_type='ica')
+
+pbmc_container <- get_all_lds_factor_plots(pbmc_container, use_sig_only=TRUE,
+                                           nonsig_to_zero=TRUE,
+                                           sig_thresh=0.02,
+                                           display_genes=FALSE,
+                                           gene_callouts=TRUE,
+                                           callout_n_gene_per_ctype=5)
+
+myfig <- render_multi_plots(pbmc_container,data_type='loadings')
+myfig
+
+# pdf(file = "/home/jmitchel/figures/for_paper/pbmc_loadings.pdf", useDingbats = FALSE,
+#     width = 18, height = 14)
+# myfig
+# dev.off()
+
+# pdf(file = "/home/jmitchel/figures/for_paper/pbmc_f1_dsig_genes.pdf", useDingbats = FALSE,
+#     width = 9, height = 13)
+pbmc_container <- plot_donor_sig_genes(pbmc_container, factor_select=1,ctypes_use=c('cMonocyte','CD4+ T','CD8+ T','CD56(dim) NK'),
+                                       top_n_per_ctype=c(30,10,10,10), show_donor_labels=TRUE)
+dev.off()
+
+# pdf(file = "/home/jmitchel/figures/for_paper/pbmc_f4_dsig_genes.pdf", useDingbats = FALSE,
+#     width = 9, height = 13)
+pbmc_container <- plot_donor_sig_genes(pbmc_container, factor_select=4,ctypes_use=c('CD8+ T','cMonocyte'),
+                                       top_n_per_ctype=c(30,10), show_donor_labels=TRUE)
+dev.off()
+
+
+pbmc_container <- run_gsea_one_factor(pbmc_container, factor_select=1, method="fgsea", thresh=0.05,
+                                      db_use=c("GO"), collapse_paths=FALSE)
+
+# pdf(file = "/home/jmitchel/figures/for_paper/pbmc_f1_gsea.pdf", useDingbats = FALSE,
+#     width = 7, height = 8)
+pbmc_container[["plots"]][["gsea"]][["1"]]
+dev.off()
+
+pbmc_container <- run_gsea_one_factor(pbmc_container, factor_select=4, method="fgsea", thresh=0.05,
+                                      db_use=c("GO","Reactome","BioCarta"), collapse_paths=FALSE)
+
+# pdf(file = "/home/jmitchel/figures/for_paper/pbmc_f4_gsea.pdf", useDingbats = FALSE,
+#     width = 7, height = 8)
+pbmc_container[["plots"]][["gsea"]][["4"]]
+dev.off()
+
+pbmc_container <- run_gsea_one_factor(pbmc_container, factor_select=5, method="fgsea", thresh=0.05,
+                                      db_use=c("GO"), collapse_paths=FALSE)
+
+pbmc_container[["plots"]][["gsea"]][["5"]]
+
+plot_loadings_annot(pbmc_container, factor_select=5)
+
+myfig <- render_multi_plots(pbmc_container,data_type='loadings')
+myfig
+
+
+pbmc_container <- get_subtype_prop_associations(pbmc_container,max_res=1,'adj_pval',integration_var='lanes')
+pbmc_container <- get_subtype_prop_associations(pbmc_container,max_res=1,'adj_pval',n_col=3)
+
+pdf(file = "/home/jmitchel/figures/for_paper/pbmc_subtype_associations.pdf", useDingbats = FALSE,
+    width = 9, height = 7)
+pbmc_container$plots$subtype_prop_factor_associations
+dev.off()
+
+
+pbmc_container <- get_ctype_prop_associations(pbmc_container,'adj_pval',n_col=3)
+pdf(file = "/home/jmitchel/figures/for_paper/pbmc_major_ctype_associations.pdf", useDingbats = FALSE,
+    width = 7, height = 7)
+pbmc_container$plots$ctype_prop_factor_associations
+dev.off()
+
+pbmc_container <- get_all_subclust_plots(pbmc_container,
+                                         ctypes=c('CD4+ T','CD56(dim) NK',
+                                                  'cMonocyte','B'),
+                                         res=c(.6,.6,.6,.6),
+                                         factors=c(1,1,1,1))
+
+subc_fig <- render_subtype_plots_v2(pbmc_container)
+pdf(file = "/home/jmitchel/figures/for_paper/pbmc_f1_subtypes.pdf", useDingbats = FALSE,
+    width = 21, height = 16)
+subc_fig
+dev.off()
+
+
+pbmc_container[["plots"]][["subc_plots"]] <- NULL
+pbmc_container <- get_all_subclust_plots(pbmc_container,
+                                         ctypes=c('CD8+ T'),
+                                         res=c(.5),
+                                         factors=c(4))
+
+subc_fig <- render_subtype_plots_v2(pbmc_container)
+pdf(file = "/home/jmitchel/figures/for_paper/pbmc_f4_subtypes.pdf", useDingbats = FALSE,
+    width = 4, height = 11)
+subc_fig
+dev.off()
+
+
+print('test')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### old pipeline
+
 pbmc_scMinimal <- instantiate_scMinimal(count_data=pbmc_counts, meta_data=pbmc_meta)
 pbmc_container <- make_new_container(pbmc_scMinimal,
                                      ctypes_use = c("CD4+ T", "CD8+ T", "cMonocyte", "CD56(dim) NK", "B"),
@@ -57,10 +268,10 @@ pbmc_container$plots$donor_matrix
 pbmc_container <- run_jackstraw(pbmc_container, n_fibers=100, n_iter=500)
 
 # show that significant genes correspond to large magnitude loadings
-pbmc_container <- get_all_lds_factor_plots(pbmc_container, use_sig_only=FALSE, 
-                                           nonsig_to_zero=FALSE, 
+pbmc_container <- get_all_lds_factor_plots(pbmc_container, use_sig_only=FALSE,
+                                           nonsig_to_zero=FALSE,
                                            annot='sig_genes',
-                                           sig_thresh=0.05, 
+                                           sig_thresh=0.05,
                                            display_genes=FALSE,
                                            gene_callouts=FALSE)
 render_all_lds_plots(pbmc_container, n_rows=2)
@@ -90,18 +301,18 @@ render_all_lds_plots(pbmc_container, n_rows=2)
 ### plot_donor_sig_genes and run_gsea_one_factor should be made automatic for all
 ### all factors and resulting plots should be auto formatted...
 # generate some plots of scaled expression for top loadings genes of a factor
-pbmc_container <- plot_donor_sig_genes(pbmc_container, factor_select=2, 
-                                       top_n_per_ctype=c(30,30), 
+pbmc_container <- plot_donor_sig_genes(pbmc_container, factor_select=2,
+                                       top_n_per_ctype=c(30,30),
                                        ctypes_use=c('CD4+ T','cMonocyte'))
 pbmc_container$plots$donor_sig_genes$Factor2
 
-pbmc_container <- plot_donor_sig_genes(pbmc_container, factor_select=3, 
-                                       top_n_per_ctype=c(5,30), 
+pbmc_container <- plot_donor_sig_genes(pbmc_container, factor_select=3,
+                                       top_n_per_ctype=c(5,30),
                                        ctypes_use=c('CD4+ T','CD8+ T'))
 pbmc_container$plots$donor_sig_genes$Factor3
 
-pbmc_container <- plot_donor_sig_genes(pbmc_container, factor_select=4, 
-                                       top_n_per_ctype=c(5,20), 
+pbmc_container <- plot_donor_sig_genes(pbmc_container, factor_select=4,
+                                       top_n_per_ctype=c(5,20),
                                        ctypes_use=c('CD4+ T','CD8+ T'))
 pbmc_container$plots$donor_sig_genes$Factor4
 

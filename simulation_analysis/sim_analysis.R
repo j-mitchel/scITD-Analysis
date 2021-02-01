@@ -250,3 +250,53 @@ mean(bd2)
 
 
 
+
+
+
+
+
+# plotting tsne and heatmap of data
+myexp <- as.matrix(sim_data[[1]])
+meta_data <- sim_data[[2]]
+
+# limit expression matrix to only 1 ctype
+myexp <- myexp[,meta_data$ctypes == 'ct1']
+meta_data <- meta_data[meta_data$ctypes == 'ct1',]
+print(meta_data[1:50,])
+
+myexp <- t(scale(t(myexp)))
+
+ha = HeatmapAnnotation(bar = as.factor(meta_data$Group))
+
+Heatmap(myexp,
+        show_row_dend = FALSE,
+        show_column_dend = FALSE,
+        top_annotation=ha,
+        column_split = as.factor(meta_data$Group),
+        show_row_names=FALSE)
+
+
+pres <- prcomp(t(myexp),scale=F,center=F)
+
+
+library(umap)
+ures <- umap(pres[["x"]][,1:20])
+
+tmp <- as.data.frame(cbind(ures[["layout"]],meta_data$Group))
+colnames(tmp) <- c('UMAP1','UMAP2','grp')
+tmp$UMAP1 <- as.numeric(tmp$UMAP1)
+tmp$UMAP2 <- as.numeric(tmp$UMAP2)
+tmp$grp <- as.factor(tmp$grp)
+
+ggplot(tmp,aes(x=UMAP1,y=UMAP2,color=grp)) +
+  geom_point()
+
+
+
+
+
+
+
+
+
+

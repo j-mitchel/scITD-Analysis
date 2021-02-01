@@ -161,6 +161,38 @@ pbmc_sub_umap <- pbmc@reductions[["umap"]]@cell.embeddings
 
 
 
+# I noticed there are some cells where one or two genes make up > 50% of all UMIs
+library(Seurat)
+library(scater)
+
+# counts matrix
+pbmc_counts <- readRDS('/home/jmitchel/data/van_der_wijst/pbmc_counts.rds')
+
+# meta data matrix
+pbmc_meta <- readRDS('/home/jmitchel/data/van_der_wijst/pbmc_meta.rds')
+
+# get cells with any gene making up more then x percent of its library size
+thresh <- .15
+
+lib_sizes <- colSums(pbmc_counts)
+maxvals <- apply(pbmc_counts,MARGIN=2,FUN=max)
+
+fracs <- maxvals/lib_sizes
+
+cells_rem <- names(fracs)[fracs>thresh]
+length(cells_rem)
+
+
+pbmc_counts <- pbmc_counts[,!(colnames(pbmc_counts) %in% cells_rem)]
+pbmc_meta <- pbmc_meta[!(rownames(pbmc_meta) %in% cells_rem),]
+
+
+saveRDS(pbmc_counts,file='/home/jmitchel/data/van_der_wijst/pbmc_counts_v2.rds',compress = "xz")
+saveRDS(pbmc_meta,file='/home/jmitchel/data/van_der_wijst/pbmc_meta_v2.rds',compress = "xz")
+
+
+
+
 
 
 

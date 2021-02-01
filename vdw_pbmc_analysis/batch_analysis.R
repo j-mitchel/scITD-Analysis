@@ -1,10 +1,10 @@
 library(scITD)
 
 # counts matrix
-pbmc_counts <- readRDS('/home/jmitchel/data/van_der_wijst/pbmc_counts.rds')
+pbmc_counts <- readRDS('/home/jmitchel/data/van_der_wijst/pbmc_counts_v2.rds')
 
 # meta data matrix
-pbmc_meta <- readRDS('/home/jmitchel/data/van_der_wijst/pbmc_meta.rds')
+pbmc_meta <- readRDS('/home/jmitchel/data/van_der_wijst/pbmc_meta_v2.rds')
 
 # ensembl to gene name conversions
 feature.names <- readRDS('/home/jmitchel/data/van_der_wijst/genes.rds')

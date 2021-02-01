@@ -3,7 +3,124 @@ library(scITD)
 library(Seurat)
 
 # load up the subsetted dataset
-pbmc <- readRDS('/home/jmitchel/data/lupus_data/lupus_subsetted_seurat_v2.rds')
+pbmc <- readRDS('/home/jmitchel/data/lupus_data/lupus_subsetted_seurat_v3.rds')
+
+# set up project parameters
+param_list <- initialize_params(ctypes_use = c("B","NK","T4","T8","cDC",
+                                               "cM","ncM"),
+                                ncores = 30, rand_seed = 10)
+
+pbmc_container <- make_new_container(seurat_obj=pbmc,
+                                     params=param_list,
+                                     metadata_cols=c('ind_cov_batch_cov',
+                                                     "SLE_status",
+                                                     "Status",
+                                                     "cg_cov",
+                                                     "sex",
+                                                     "age",
+                                                     "batch_cov",
+                                                     "Processing_Cohort"),
+                                     metadata_col_nm=c('donors',
+                                                       'SLE_status',
+                                                       'Status',
+                                                       'ctypes',
+                                                       'sex',
+                                                       'age',
+                                                       'pool',
+                                                       'processing'))
+
+pbmc_container <- form_tensor(pbmc_container, donor_min_cells=20, gene_min_cells=20,
+                              norm_method='trim', scale_factor=10000,
+                              vargenes_method='norm_var_pvals', vargenes_thresh=.05,
+                              scale_var = TRUE, var_scale_power = 1.5)
+
+
+# pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(23,32,7),
+#                                  tucker_type = 'regular', rotation_type = 'ica')
+# pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(21,35,7),
+#                                  tucker_type = 'regular', rotation_type = 'ica')
+# pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(21,30,7),
+#                                  tucker_type = 'regular', rotation_type = 'ica')
+pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(20,28,7),
+                                 tucker_type = 'regular', rotation_type = 'ica')
+# pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(19,30,7),
+#                                  tucker_type = 'regular', rotation_type = 'ica')
+# pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(18,30,7),
+#                                  tucker_type = 'regular', rotation_type = 'ica')
+
+# get factor-meta data associations
+pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('sex','pool'))
+
+# plot donor scores
+pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex','pool'),
+                                    cluster_by_meta='pool',
+                                    show_donor_ids = FALSE,
+                                    add_meta_associations=TRUE)
+# dev.off()
+pbmc_container$plots$donor_matrix
+
+# save decomposition in object for comparison later
+tucker_res1 <- pbmc_container$tucker_results
+meta_anno1 <- pbmc_container$meta_associations
+
+
+# now do with combat batch correction
+pbmc_container <- form_tensor(pbmc_container, donor_min_cells=20, gene_min_cells=20,
+                              norm_method='trim', scale_factor=10000,
+                              vargenes_method='norm_var_pvals', vargenes_thresh=.05,
+                              scale_var = TRUE, var_scale_power = 1.5,
+                              batch_var='pool')
+
+pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(10,20,7),
+                                 tucker_type = 'regular', rotation_type = 'ica')
+# pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(12,24,7),
+#                                  tucker_type = 'regular', rotation_type = 'ica')
+# pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(13,30,7),
+#                                  tucker_type = 'regular', rotation_type = 'ica')
+
+# get factor-meta data associations
+pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('sex','pool'))
+
+# plot donor scores
+pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex','pool'),
+                                    show_donor_ids = FALSE,
+                                    add_meta_associations=TRUE)
+# dev.off()
+pbmc_container$plots$donor_matrix
+
+# save decomposition in object for comparison later
+tucker_res2 <- pbmc_container$tucker_results
+meta_anno2 <- pbmc_container$meta_associations
+
+
+# compare decompositions
+decomp_names <- c('no combat','with combat')
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_combat_compare.pdf", useDingbats = FALSE,
+    width = 12, height = 7)
+compare_decompositions(tucker_res1,tucker_res2,decomp_names,meta_anno1,meta_anno2)
+dev.off()
+
+print('done')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### old pipeline
 
 # prep the container
 pbmc_scMinimal <- seurat_to_scMinimal(pbmc,normalize_counts=FALSE,
@@ -99,6 +216,75 @@ meta_anno2 <- pbmc_container$meta_associations
 
 decomp_names <- c('no combat','with combat')
 compare_decompositions(tucker_res1,tucker_res2,decomp_names,meta_anno1,meta_anno2)
+
+
+
+
+
+
+
+
+
+
+# plot number of batch factors for incresing total number of factors
+pbmc <- readRDS('/home/jmitchel/data/lupus_data/lupus_subsetted_seurat_v3.rds')
+
+
+param_list <- initialize_params(ctypes_use = c("B","NK","T4","T8","cDC",
+                                               "cM","ncM"),
+                                ncores = 30, rand_seed = 10)
+
+pbmc_container <- make_new_container(seurat_obj=pbmc,
+                                     params=param_list,
+                                     metadata_cols=c('ind_cov_batch_cov',
+                                                     "SLE_status",
+                                                     "Status",
+                                                     "cg_cov",
+                                                     "sex",
+                                                     "age",
+                                                     "batch_cov",
+                                                     "Processing_Cohort"),
+                                     metadata_col_nm=c('donors',
+                                                       'SLE_status',
+                                                       'Status',
+                                                       'ctypes',
+                                                       'sex',
+                                                       'age',
+                                                       'pool',
+                                                       'processing'))
+
+
+pbmc_container <- form_tensor(pbmc_container, donor_min_cells=20, gene_min_cells=20,
+                              norm_method='trim', scale_factor=10000,
+                              vargenes_method='norm_var_pvals', vargenes_thresh=.05,
+                              scale_var = TRUE, var_scale_power = 1.5)
+
+pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(20,30,7),
+                                 tucker_type = 'regular', rotation_type = 'ica')
+
+# get factor-meta data associations
+pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('sex','pool','processing'))
+
+# plot donor scores
+pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex','pool','processing'),
+                                    cluster_by_meta='pool',
+                                    show_donor_ids = FALSE,
+                                    add_meta_associations=TRUE)
+
+# pdf(file = "/home/jmitchel/figures/for_paper/lupus_no_combat_dscores.pdf", useDingbats = FALSE,
+#     width = 9, height = 8)
+pbmc_container$plots$donor_matrix
+# dev.off()
+
+
+pbmc_container <- get_num_batch_ranks(pbmc_container, donor_ranks_test=seq(5,50,5),
+                                      gene_ranks=80, batch_var='pool', thresh=0.5,
+                                      tucker_type='regular', rotation_type='ica')
+
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_batch_ranks.pdf", useDingbats = FALSE,
+    width = 15, height = 7)
+pbmc_container$plots$num_batch_factors
+dev.off()
 
 
 

@@ -79,6 +79,16 @@ dev.off()
 
 pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(10,20,7),
                                  tucker_type = 'regular', rotation_type = 'ica')
+# pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(15,30,7),
+#                                  tucker_type = 'regular', rotation_type = 'ica')
+# pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(12,23,7),
+#                                  tucker_type = 'regular', rotation_type = 'ica')
+# pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(9,21,7),
+#                                  tucker_type = 'regular', rotation_type = 'varimax')
+# pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(7,18,7),
+#                                  tucker_type = 'regular', rotation_type = 'varimax') 
+# pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(9,20,7),
+#                                  tucker_type = 'regular', rotation_type = 'ica')
 
 
 # get factor-meta data associations
@@ -117,8 +127,16 @@ dev.off()
 # get significant genes
 pbmc_container <- run_jackstraw(pbmc_container, ranks=c(10,20,7), n_fibers=100, n_iter=1000,
                                 tucker_type='regular', rotation_type='ica')
+pbmc_container <- run_jackstraw(pbmc_container, ranks=c(12,23,7), n_fibers=100, n_iter=1000,
+                                tucker_type='regular', rotation_type='ica')
+pbmc_container <- run_jackstraw(pbmc_container, ranks=c(15,30,7), n_fibers=100, n_iter=1000,
+                                tucker_type='regular', rotation_type='ica')
+# saveRDS(pbmc_container[["gene_score_associations"]],file='/home/jmitchel/data/lupus_data/lupus_jackstraw.rds')
+# saveRDS(pbmc_container[["gene_score_associations"]],file='/home/jmitchel/data/lupus_data/lupus_jackstraw_var5.rds')
+# saveRDS(pbmc_container[["gene_score_associations"]],file='/home/jmitchel/data/lupus_data/lupus_jackstraw_var5_15.rds')
 
-saveRDS(pbmc_container[["gene_score_associations"]],file='/home/jmitchel/data/lupus_data/lupus_jackstraw.rds')
+pbmc_container[["gene_score_associations"]] <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_jackstraw.rds')
+
 
 # get loadings plots
 pbmc_container <- get_all_lds_factor_plots(pbmc_container, use_sig_only=TRUE,
@@ -126,7 +144,7 @@ pbmc_container <- get_all_lds_factor_plots(pbmc_container, use_sig_only=TRUE,
                                            sig_thresh=0.02,
                                            display_genes=FALSE,
                                            gene_callouts=TRUE,
-                                           callout_n_gene_per_ctype=5)
+                                           callout_n_gene_per_ctype=10)
 
 # makes tall rendering
 myfig <- render_multi_plots(pbmc_container,data_type='loadings')
@@ -150,8 +168,8 @@ dev.off()
 
 # Factor 5 deep dive
 # run gsea 
-pbmc_container <- run_gsea_one_factor(pbmc_container, factor_select=5, method="hypergeometric", thresh=0.001,
-                                      db_use=c("GO"), collapse_paths=FALSE)
+pbmc_container <- run_gsea_one_factor(pbmc_container, factor_select=3, method="fgsea", thresh=0.05,
+                                      db_use=c("GO"), collapse_paths=TRUE)
 
 pdf(file = "/home/jmitchel/figures/for_paper/lupus_f5_enrich.pdf", useDingbats = FALSE,
     width = 9, height = 16)
@@ -162,9 +180,14 @@ oldplt <- pbmc_container[["plots"]][["gsea"]][["5"]]
 
 pdf(file = "/home/jmitchel/figures/for_paper/lupus_f5_dsig_genes.pdf", useDingbats = FALSE,
     width = 9, height = 13)
-pbmc_container <- plot_donor_sig_genes(pbmc_container, factor_select=5,
-                                       top_n_per_ctype=8, show_donor_labels=FALSE,
-                                       additional_meta='Status')
+pbmc_container <- plot_donor_sig_genes_v2(pbmc_container, factor_select=9,
+                                       top_n_per_ctype=40, show_donor_labels=FALSE,
+                                       additional_meta='Status',
+                                       ctypes_use=c('T4','B'))
+pbmc_container <- plot_donor_sig_genes_v2(pbmc_container, factor_select=6,
+                                          top_n_per_ctype=40, show_donor_labels=FALSE,
+                                          additional_meta='Status')
+draw(pbmc_container$plots$donor_sig_genes[['9']], column_title='Donors', column_title_side='bottom')
 dev.off()
 
 

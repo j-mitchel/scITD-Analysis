@@ -288,3 +288,255 @@ saveRDS(pbmc,file='/home/jmitchel/data/lupus_data/lupus_subsetted_seurat_v3.rds'
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### set up the data for analysis of flare donors vs healthy
+
+# for creating smaller dataset with balanced batches only
+
+# read the h5seurat file
+pbmc <- LoadH5Seurat("/home/jmitchel/data/lupus_data/Lupus_study_adjusted.h5seurat")
+
+# qc analyses
+pbmc[['nCount_RNA']] <- colSums(pbmc[['RNA']]@counts)
+pbmc[["percent.mt"]] <- PercentageFeatureSet(pbmc, pattern = "^MT-")
+
+# remove cells with high mitochondrial expression
+pbmc <- subset(pbmc, subset = percent.mt < 10)
+
+# get donor status counts for each batch
+batches <- unique(as.character(pbmc@meta.data$batch_cov))
+for (b in batches) {
+  tmp <- pbmc@meta.data[pbmc@meta.data$batch_cov==b,]
+  print(b)
+  print(table(tmp$Status))
+}
+
+# pools to keep
+# "dmx_AbFlare-3", "dmx_flare2", "dmx_AbFlare-4", "dmx_flare1"
+
+batch_keep <- c("dmx_AbFlare-3","dmx_flare2","dmx_AbFlare-4","dmx_flare1")
+cells_keep <- rownames(pbmc@meta.data[pbmc@meta.data$batch_cov %in% batch_keep,])
+pbmc <- subset(pbmc, cells = cells_keep)
+
+# check that all are from one processing batch
+table(pbmc@meta.data$Processing_Cohort)
+
+# see if donors only in one batch
+donors <- unique(pbmc@meta.data$Genotype.ID)
+for (d in donors) {
+  # subset to the donor
+  tmp <- pbmc@meta.data[pbmc@meta.data$Genotype.ID==d,]
+  # get number of batches donor is in
+  if (sum(table(tmp$batch_cov)>0)>1) {
+    print(table(tmp$batch_cov))
+  }
+}
+# seems like there are a handful of donors in multiple batches...
+
+
+# using greedy process of removing donors to minimize imbalance in sets
+donors <- unique(as.character(pbmc@meta.data$Genotype.ID))
+print(length(donors))
+for (d in donors) {
+  print(d)
+  # subset to the donor
+  tmp <- pbmc@meta.data[pbmc@meta.data$Genotype.ID==d,]
+  # get number of batches donor is in
+  if (sum(table(tmp$batch_cov)>0)>1) {
+    # get the donor's status
+    d_stat <- as.character(tmp$Status[1])
+    
+    # get fractions of statuses in each batch
+    all_fracs <- list()
+    batch_pres <- names(table(tmp$batch_cov))[table(tmp$batch_cov)>0]
+    for (b in batch_pres) {
+      tmp2 <- pbmc@meta.data[pbmc@meta.data$batch_cov==b,]
+      fracs <- table(tmp2$Status)/sum(table(tmp2$Status))
+      all_fracs[[b]] <- fracs[d_stat]
+    }
+    
+    # keep sample where there is lowest fraction
+    all_fracs_vec <- unlist(all_fracs)
+    names(all_fracs_vec) <- names(all_fracs)
+    ndx_rem <- which(all_fracs_vec != min(all_fracs_vec))
+    batches_rem <- names(all_fracs_vec)[ndx_rem]
+    samps_rem <- sapply(batches_rem,function(x) {
+      paste0(d,x)
+    })
+    
+    cells_rem <- rownames(pbmc@meta.data[pbmc@meta.data$ind_cov_batch_cov %in% samps_rem,])
+    pbmc <- subset(pbmc, cells = cells_rem, invert=TRUE)
+  }
+}
+
+# checking that still have same number of donors
+donors <- unique(as.character(pbmc@meta.data$Genotype.ID))
+print(length(donors))
+
+# saving subsetted seurat object so can revisit this step later and try different normalization schemes
+saveRDS(pbmc,file='/home/jmitchel/data/lupus_data/lupus_subsetted_seurat_flare.rds',compress = "xz")
+
+
+
+# look at status breakdown per batch
+
+batches <- unique(as.character(pbmc@meta.data$batch_cov))
+for (b in batches) {
+  print(b)
+  tmp <- pbmc@meta.data[pbmc@meta.data$batch_cov==b,]
+  tmp <- tmp[,c('Genotype.ID','Status')]
+  tmp <- unique(tmp)
+  print(table(tmp$Status))
+}
+# it seems that one of the flare donors was the sole flare donor in two separate batches so there is
+# now one batch with no flare donors. It's probably okay since there are managed donors in there, plus
+# we need as many donors as possible here
+
+
+
+
+# ## need to remove cells with large fraction of UMIs from 1 gene as these can affect the results considerably
+
+count_data <- pbmc@assays$RNA@counts
+
+thresh <- .3
+ncells <- ncol(count_data)
+csub <- c(seq(1,ncells,50000),ncells)
+all_cells_keep <- c()
+for (i in 1:(length(csub)-1)) {
+  print(i)
+  tmp <- count_data[,(csub[i]+1):csub[i+1]]
+  
+  maxvals <- apply(tmp,MARGIN=2,FUN=max)
+  lib_sizes <- colSums(tmp)
+  fracs <- maxvals/lib_sizes
+  
+  cells_keep <- names(fracs)[fracs < thresh]
+  
+  all_cells_keep <- c(all_cells_keep,cells_keep)
+  
+  print(paste0(length(cells_keep),' cells kept'))
+  print('')
+  
+}
+
+pbmc <- subset(pbmc,cells = all_cells_keep)
+dim(pbmc@assays$RNA@counts)
+dim(pbmc@meta.data)
+
+# saveRDS(pbmc,file='/home/jmitchel/data/lupus_data/lupus_subsetted_seurat_flare_v2.rds',compress = "xz")
+
+
+# need to make donor labels a factor with only unique levels
+pbmc@meta.data$ind_cov_batch_cov <- factor(pbmc@meta.data$ind_cov_batch_cov,levels=unique(pbmc@meta.data$ind_cov_batch_cov))
+# do same thing with pool and processing and cell types
+pbmc@meta.data$batch_cov <- factor(pbmc@meta.data$batch_cov,levels=unique(pbmc@meta.data$batch_cov))
+pbmc@meta.data$Processing_Cohort <- factor(pbmc@meta.data$Processing_Cohort,levels=unique(pbmc@meta.data$Processing_Cohort))
+pbmc@meta.data$cg_cov <- factor(pbmc@meta.data$cg_cov,levels=unique(pbmc@meta.data$cg_cov))
+
+# saveRDS(pbmc,file='/home/jmitchel/data/lupus_data/lupus_subsetted_seurat_flare_v3.rds',compress = "xz")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

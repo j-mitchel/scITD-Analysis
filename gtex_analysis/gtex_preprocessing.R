@@ -142,18 +142,45 @@ gtex_meta$dthhrdy <- as.factor(gtex_meta$dthhrdy)
 
 
 
+# I realize it's probably good to apply batch correction since the dataset was generated 
+# in different experimental batches.
+# The covariate I will use is termed SMGEBTCH
+
+# need to remove samples that are the only samples in their respective batch.
+
+gtex_tpm_sub_transform <- readRDS(file='/home/jmitchel/data/gtex/7_tissues_counts.rds')
+gtex_meta <- readRDS(file='/home/jmitchel/data/gtex/7_tissues_meta.rds')
+
+base_dir <- '/home/jmitchel/data/gtex/'
+sample_meta <- as.data.frame(fread(paste0(base_dir,"GTEx_Analysis_v8_Annotations_SampleAttributesDS.txt")))
+rownames(sample_meta) <- sample_meta$SAMPID
+  
+# adding covariates to remove to donor meta data
+gtex_meta <- cbind(gtex_meta,sample_meta[rownames(gtex_meta),c('SMGEBTCH','SMTSISCH')])
+metadata <- gtex_meta
+
+# remove donors with samples only in 1 batch (do repeatedly until no such batches)
+batch_remove <- names(table(metadata$SMGEBTCH)[table(metadata$SMGEBTCH)==1])
+while (length(batch_remove)!=0) {
+  d_remove <- unique(metadata$donors[metadata$SMGEBTCH %in% batch_remove])
+  metadata <- metadata[!(metadata$donors %in% d_remove),]
+  batch_remove <- names(table(metadata$SMGEBTCH)[table(metadata$SMGEBTCH)==1])
+}
+length(unique(metadata$donors)) # still have a large enough number of donors
 
 
+# need metadata at donor level
+gtex_tpm_sub_transform <- gtex_tpm_sub_transform[,rownames(metadata)]
 
+modcombat <- stats::model.matrix(~1, data=metadata)
+gtex_tpm_sub_transform <- sva::ComBat(dat=gtex_tpm_sub_transform,
+                                      batch=metadata[,'SMGEBTCH'],
+                                      mod=modcombat, par.prior=TRUE,
+                                      prior.plots=FALSE)
+dim(gtex_tpm_sub_transform)
 
-
-
-
-
-
-
-
-
+# saveRDS(gtex_tpm_sub_transform,file='/home/jmitchel/data/gtex/7_tissues_counts_v2.rds')
+# saveRDS(metadata,file='/home/jmitchel/data/gtex/7_tissues_meta_v2.rds')
 
 
 

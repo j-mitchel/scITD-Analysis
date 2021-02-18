@@ -191,9 +191,10 @@ pbmc_container <- plot_donor_sig_genes(pbmc_container, factor_select=6,
 pbmc_container$plots$donor_sig_genes[['6']]
 pbmc_container <- plot_donor_sig_genes(pbmc_container, factor_select=7,
                                        ctypes_use=c('cM','T8','NK','T4','ncM','cDC','B'),
-                                       top_n_per_ctype=c(10,50,5,10,5,5,5),
+                                       top_n_per_ctype=c(5,10,5,5,5,5,5),
                                        show_donor_labels=FALSE,
-                                       additional_meta='Status')
+                                       additional_meta='Status',
+                                       add_genes=c('IFI6','ISG15','MX1','XAF1'))
 pbmc_container$plots$donor_sig_genes[['7']]
 pbmc_container <- plot_donor_sig_genes(pbmc_container, factor_select=8,
                                        ctypes_use=c('cM','T8','NK','T4','ncM','cDC','B'),
@@ -280,6 +281,65 @@ dev.off()
 
 
 
+# to create GO similarity map for a cell type
+pbmc_container <- run_gsea_one_factor(pbmc_container, factor_select=5, method="hypergeometric", thresh=0.05,
+                                      db_use=c("GO"), collapse_paths=FALSE)
+pbmc_container <- run_gsea_one_factor(pbmc_container, factor_select=5, method="fgsea", thresh=0.05,
+                                      db_use=c("GO"), collapse_paths=FALSE)
+pbmc_container <- run_gsea_one_factor(pbmc_container, factor_select=7, method="fgsea", thresh=0.05,
+                                      db_use=c("GO"), collapse_paths=FALSE)
+pbmc_container <- run_gsea_one_factor(pbmc_container, factor_select=4, method="fgsea", thresh=0.05,
+                                      db_use=c("GO"), collapse_paths=FALSE)
+pbmc_container[["plots"]][["gsea"]][["7"]]
+
+tmp <- pbmc_container[["gsea_results"]][["5"]][["up"]][["cM"]]
+tmp <- pbmc_container[["gsea_results"]][["5"]][["down"]][["cDC"]]
+tmp <- tmp[tmp<.05]
+tmp <- names(tmp)
+mat <- simplifyEnrichment::GO_similarity(tmp,ont='BP')
+simplifyEnrichment::simplifyGO(mat)
+
+# or get all sets in up group
+all_go <- c()
+for (ct in pbmc_container$experiment_params$ctypes_use) {
+    tmp <- pbmc_container[["gsea_results"]][["5"]][["down"]][[ct]]
+    tmp <- tmp[tmp<.05]
+    tmp <- names(tmp)
+    all_go <- c(all_go,tmp)
+}
+all_go <- unique(all_go)
+mat <- GO_similarity(all_go,ont='BP')
+simplifyGO(mat)
+simplifyGO(mat,method="dynamicTreeCut")
+simplifyGO(mat,method="apcluster")
+simplifyGO(mat,method="hdbscan")
+simplifyGO(mat,method="kmeans")
+
+cool <- grid.grabExpr(simplifyGO(mat,method="kmeans"))
+
+cl = simplifyEnrichment::binary_cut(mat)
+ht_clusters(mat, cl, word_cloud_grob_param = list(max_width = 80))
+
+# testing ht_clusters fn
+go_id = simplifyEnrichment::random_GO(500)
+mat <- simplifyEnrichment::GO_similarity(go_id,ont='BP')
+cl = simplifyEnrichment::binary_cut(mat)
+cool <- ht_clusters(mat, cl, word_cloud_grob_param = list(max_width = 80))
+
+# general test
+library(simplifyEnrichment)
+set.seed(888)
+go_id = random_GO(500)
+mat = GO_similarity(go_id,ont='BP')
+df = simplifyGO(mat)
+
+# testing new function to create side by side heatmaps
+
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/lupus_f5_gsea_double2.pdf", useDingbats = FALSE,
+    width = 20, height = 15)
+cool <- plot_gsea_hmap_w_similarity(pbmc_container,factor_select=2,direc='up',thresh=.05)
+dev.off()
+
 ## now for cell subtype proportion analysis
 # add conos object for cell proportion analysis
 con <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_conos.rds')
@@ -300,7 +360,7 @@ pbmc_container$embedding$clusters$leiden$groups <- orig_clusts
 # large number of cores seems to hamper some stuff below
 pbmc_container$embedding$n.cores <- 5
 
-pbmc_container <- get_subtype_prop_associations(pbmc_container, max_res=.9, stat_type='adj_pval',
+pbmc_container <- get_subtype_prop_associations(pbmc_container, max_res=.5, stat_type='adj_pval',
                                                 min_cells_group=200)
 
 pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/lupus_subtype_prop_associations.pdf", useDingbats = FALSE,
@@ -310,7 +370,7 @@ dev.off()
 
 # saveRDS(pbmc_container$plots$subtype_prop_factor_associations,file='/home/jmitchel/data/lupus_data/lupus_sub_associations_plot.rds')
 # saveRDS(pbmc_container$subclusters,file='/home/jmitchel/data/lupus_data/lupus_subcluster_data.rds')
-
+pbmc_container$subclusters <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_subcluster_data.rds')
 
 
 ### generate figure with all ctype information for all ctypes/factors
@@ -326,7 +386,7 @@ all_res=c(.5,.7,.8,.9,
           .5,.6,.7,.8,
           .5,.7,.8,.9,
           .6,.7,.8,.9,
-          .6,.7,.8,.9,
+          .5,.6,.8,.9,
           .5,.6,.8,.9,
           .6,.7,.8,.9)
 
@@ -355,14 +415,18 @@ all_res=c(.5,
           .6,
           .6)
 
+
 pbmc_container <- get_subclust_enr_fig(pbmc_container,all_ctypes,all_res)
 
 
-pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/lupus_all_subc_fig2.pdf", useDingbats = FALSE,
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/lupus_all_subc_total_cells.pdf", useDingbats = FALSE,
     width = 30, height = 16)
 pbmc_container$plots$subc_fig
 dev.off()
 
+
+# saveRDS(pbmc_container[["plots"]][["subtype_de"]],file='/home/jmitchel/data/lupus_data/lupus_subc_de_plots.rds')
+pbmc_container[["plots"]][["subtype_de"]] <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_subc_de_plots.rds')
 
 
 
@@ -374,11 +438,8 @@ pbmc_container$plots$ctype_prop_factor_associations
 dev.off()
 
 
-
-
 # create main embedding for lupus data
 pbmc_container$embedding$plotGraph(alpha=0.1)
-
 
 
 
@@ -429,5 +490,582 @@ pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/lupus_f2_f5_different_down
     width = 10, height = 35)
 pbmc_container$plots$comparisons[['2_5']]
 dev.off()
+
+
+pbmc_container <- compare_factors(pbmc_container, f_compare=c(2,5), direction=c('down','up'),
+                                  compare_type='different', sig_thresh=0.05)
+pbmc_container$plots$comparisons[['2_5']]
+diff_enr <- get_compare_go_enrich(pbmc_container,'cM',-1)
+print(diff_enr[order(diff_enr,decreasing=F)][1:10])
+
+
+pbmc_container <- compare_factors(pbmc_container, f_compare=c(2,4), direction=c('up','down'),
+                                  compare_type='different', sig_thresh=0.05)
+pbmc_container$plots$comparisons[['2_4']]
+diff_enr <- get_compare_go_enrich(pbmc_container,'T8',-1)
+print(diff_enr[order(diff_enr,decreasing=F)][1:15])
+
+
+# create "vignettes" for individual findings with the subtype proportion analysis
+
+# CD4 naive cell depletion
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/CD4_de.pdf", useDingbats = FALSE,
+    width = 5, height = 7)
+grid::grid.draw(pbmc_container[["plots"]][["subtype_de"]][['T4:0.6']])
+dev.off()
+
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/CD4_umap.pdf", useDingbats = FALSE,
+    width = 5, height = 5)
+pbmc_container$plots$subc_umaps[['T4:0.6']]
+dev.off()
+
+pbmc_container <- get_subclust_enr_bplot(pbmc_container,ctype='T4',factor_use=4)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/CD4_f4_bplot.pdf", useDingbats = FALSE,
+    width = 4, height = 3)
+pbmc_container$plots$subc_bplots[['T4']]
+dev.off()
+
+pbmc_container <- get_subclust_enr_bplot(pbmc_container,ctype='T4',factor_use=5)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/CD4_f5_bplot.pdf", useDingbats = FALSE,
+    width = 4, height = 3)
+pbmc_container$plots$subc_bplots[['T4']]
+dev.off()
+
+pbmc_container <- get_subclust_enr_bplot(pbmc_container,ctype='T4',factor_use=2)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/CD4_f2_bplot.pdf", useDingbats = FALSE,
+    width = 4, height = 3)
+pbmc_container$plots$subc_bplots[['T4']]
+dev.off()
+
+myplot <- get_subclust_enr_dotplot(pbmc_container,'T4',0.6,subtype=1,factor_use=4)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/CD4_f4_sub1_dot.pdf", useDingbats = FALSE,
+    width = 4.5, height = 4)
+myplot
+dev.off()
+
+myplot <- get_subclust_enr_dotplot(pbmc_container,'T4',0.6,subtype=1,factor_use=2)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/CD4_f2_sub1_dot.pdf", useDingbats = FALSE,
+    width = 4.5, height = 4)
+myplot
+dev.off()
+
+
+
+
+
+# CD8 granzyme cell expansion
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/CD8_de.pdf", useDingbats = FALSE,
+    width = 5, height = 7)
+grid::grid.draw(pbmc_container[["plots"]][["subtype_de"]][['T8:0.6']])
+dev.off()
+
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/CD8_umap.pdf", useDingbats = FALSE,
+    width = 5, height = 5)
+pbmc_container$plots$subc_umaps[['T8:0.6']]
+dev.off()
+
+pbmc_container <- get_subclust_enr_bplot(pbmc_container,ctype='T8',factor_use=2)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/CD8_f2_bplot.pdf", useDingbats = FALSE,
+    width = 4, height = 3)
+pbmc_container$plots$subc_bplots[['T8']]
+dev.off()
+
+pbmc_container <- get_subclust_enr_bplot(pbmc_container,ctype='T8',factor_use=1)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/CD8_f1_bplot.pdf", useDingbats = FALSE,
+    width = 4, height = 3)
+pbmc_container$plots$subc_bplots[['T8']]
+dev.off()
+
+pbmc_container <- get_subclust_enr_bplot(pbmc_container,ctype='T8',factor_use=3)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/CD8_f3_bplot.pdf", useDingbats = FALSE,
+    width = 4, height = 3)
+pbmc_container$plots$subc_bplots[['T8']]
+dev.off()
+
+pbmc_container <- get_subclust_enr_bplot(pbmc_container,ctype='T8',factor_use=7)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/CD8_f7_bplot.pdf", useDingbats = FALSE,
+    width = 4, height = 3)
+pbmc_container$plots$subc_bplots[['T8']]
+dev.off()
+
+
+myplot <- get_subclust_enr_dotplot(pbmc_container,'T8',0.6,subtype=2,factor_use=2)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/CD8_f2_sub2_dot.pdf", useDingbats = FALSE,
+    width = 4.5, height = 4)
+myplot
+dev.off()
+
+myplot <- get_subclust_enr_dotplot(pbmc_container,'T8',0.6,subtype=1,factor_use=1)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/CD8_f1_sub1_dot.pdf", useDingbats = FALSE,
+    width = 4.5, height = 4)
+myplot
+dev.off()
+
+myplot <- get_subclust_enr_dotplot(pbmc_container,'T8',0.6,subtype=1,factor_use=7)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/CD8_f7_sub1_dot.pdf", useDingbats = FALSE,
+    width = 4.5, height = 4)
+myplot
+dev.off()
+
+myplot <- get_subclust_enr_dotplot(pbmc_container,'T8',0.6,subtype=3,factor_use=3)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/CD8_f3_sub3_dot.pdf", useDingbats = FALSE,
+    width = 4.5, height = 4)
+myplot
+dev.off()
+
+
+
+# NK granzyme cell expansion
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/NK_de.pdf", useDingbats = FALSE,
+    width = 5, height = 7)
+grid::grid.draw(pbmc_container[["plots"]][["subtype_de"]][['NK:0.6']])
+dev.off()
+
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/NK_umap.pdf", useDingbats = FALSE,
+    width = 5, height = 5)
+pbmc_container$plots$subc_umaps[['NK:0.6']]
+dev.off()
+
+pbmc_container <- get_subclust_enr_bplot(pbmc_container,ctype='NK',factor_use=4)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/NK_f4_bplot.pdf", useDingbats = FALSE,
+    width = 4, height = 3)
+pbmc_container$plots$subc_bplots[['NK']]
+dev.off()
+
+pbmc_container <- get_subclust_enr_bplot(pbmc_container,ctype='NK',factor_use=9)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/NK_f9_bplot.pdf", useDingbats = FALSE,
+    width = 4, height = 3)
+pbmc_container$plots$subc_bplots[['NK']]
+dev.off()
+
+
+myplot <- get_subclust_enr_dotplot(pbmc_container,'NK',0.6,subtype=1,factor_use=4)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/NK_f4_sub1_dot.pdf", useDingbats = FALSE,
+    width = 4.5, height = 4)
+myplot
+dev.off()
+
+
+
+# B cell expansion/depletion
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/B_de.pdf", useDingbats = FALSE,
+    width = 5, height = 7)
+grid::grid.draw(pbmc_container[["plots"]][["subtype_de"]][['B:0.8']])
+dev.off()
+
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/B_umap.pdf", useDingbats = FALSE,
+    width = 5, height = 5)
+pbmc_container$plots$subc_umaps[['B:0.8']]
+dev.off()
+
+pbmc_container <- get_subclust_enr_bplot(pbmc_container,ctype='B',factor_use=2)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/B_f2_bplot.pdf", useDingbats = FALSE,
+    width = 4, height = 3)
+pbmc_container$plots$subc_bplots[['B']]
+dev.off()
+
+pbmc_container <- get_subclust_enr_bplot(pbmc_container,ctype='B',factor_use=4)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/B_f4_bplot.pdf", useDingbats = FALSE,
+    width = 4, height = 3)
+pbmc_container$plots$subc_bplots[['B']]
+dev.off()
+
+myplot <- get_subclust_enr_dotplot(pbmc_container,'B',0.8,subtype=4,factor_use=2)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/B_f2_sub4_dot.pdf", useDingbats = FALSE,
+    width = 4.5, height = 4)
+myplot
+dev.off()
+
+myplot <- get_subclust_enr_dotplot(pbmc_container,'B',0.8,subtype=1,factor_use=2)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/B_f2_sub1_dot.pdf", useDingbats = FALSE,
+    width = 4.5, height = 4)
+myplot
+dev.off()
+
+myplot <- get_subclust_enr_dotplot(pbmc_container,'B',0.8,subtype=3,factor_use=4)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/B_f4_sub3_dot.pdf", useDingbats = FALSE,
+    width = 4.5, height = 4)
+myplot
+dev.off()
+
+
+# cDC cell expansion/depletion
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/cDC_de.pdf", useDingbats = FALSE,
+    width = 5, height = 7)
+grid::grid.draw(pbmc_container[["plots"]][["subtype_de"]][['cDC:0.5']])
+dev.off()
+
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/cDC_umap.pdf", useDingbats = FALSE,
+    width = 5, height = 5)
+pbmc_container$plots$subc_umaps[['cDC:0.5']]
+dev.off()
+
+pbmc_container <- get_subclust_enr_bplot(pbmc_container,ctype='cDC',factor_use=5)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/cDC_f5_bplot.pdf", useDingbats = FALSE,
+    width = 4, height = 3)
+pbmc_container$plots$subc_bplots[['cDC']]
+dev.off()
+
+myplot <- get_subclust_enr_dotplot(pbmc_container,'cDC',0.5,subtype=2,factor_use=5)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/cDC_f5_sub2_dot.pdf", useDingbats = FALSE,
+    width = 4.5, height = 4)
+myplot
+dev.off()
+
+myplot <- get_subclust_enr_dotplot(pbmc_container,'cDC',0.5,subtype=1,factor_use=5)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/cDC_f5_sub1_dot.pdf", useDingbats = FALSE,
+    width = 4.5, height = 4)
+myplot
+dev.off()
+
+
+# cM cell expansion/depletion 
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/cM_de.pdf", useDingbats = FALSE,
+    width = 5, height = 7)
+grid::grid.draw(pbmc_container[["plots"]][["subtype_de"]][['cM:0.5']])
+dev.off()
+
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/cM_umap.pdf", useDingbats = FALSE,
+    width = 5, height = 5)
+pbmc_container$plots$subc_umaps[['cM:0.5']]
+dev.off()
+
+pbmc_container <- get_subclust_enr_bplot(pbmc_container,ctype='cM',factor_use=2)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/cM_f2_bplot.pdf", useDingbats = FALSE,
+    width = 4, height = 3)
+pbmc_container$plots$subc_bplots[['cM']]
+dev.off()
+
+pbmc_container <- get_subclust_enr_bplot(pbmc_container,ctype='cM',factor_use=5)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/cM_f5_collapsed_bplot.pdf", useDingbats = FALSE,
+    width = 4, height = 3)
+pbmc_container$plots$subc_bplots[['cM']] + scale_x_discrete(labels= c('cM_1','cM_2, cM_4','cM_3','cM_5'))
+dev.off()
+
+myplot <- get_subclust_enr_dotplot(pbmc_container,'cM',0.5,subtype=4,factor_use=2)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/cM_f2_sub4_dot.pdf", useDingbats = FALSE,
+    width = 4.5, height = 4)
+myplot
+dev.off()
+
+
+
+
+# ncM cell expansion/depletion 
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/ncM_de.pdf", useDingbats = FALSE,
+    width = 5, height = 7)
+grid::grid.draw(pbmc_container[["plots"]][["subtype_de"]][['ncM:0.6']])
+dev.off()
+
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/ncM_umap.pdf", useDingbats = FALSE,
+    width = 5, height = 5)
+pbmc_container$plots$subc_umaps[['ncM:0.6']]
+dev.off()
+
+pbmc_container <- get_subclust_enr_bplot(pbmc_container,ctype='ncM',factor_use=5)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/ncM_f5_bplot.pdf", useDingbats = FALSE,
+    width = 4, height = 3)
+pbmc_container$plots$subc_bplots[['ncM']]
+dev.off()
+
+
+myplot <- get_subclust_enr_dotplot(pbmc_container,'ncM',0.6,subtype=3,factor_use=5)
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/vignettes/ncM_f5_sub3_dot.pdf", useDingbats = FALSE,
+    width = 4.5, height = 4)
+myplot
+dev.off()
+
+
+
+
+# combine cM subclusters 2 and 4
+old <- pbmc_container[["subclusters"]][["cM"]][["res:0.5"]]
+tmp <- pbmc_container[["subclusters"]][["cM"]][["res:0.5"]]
+tmp <- sapply(tmp,function(x) {
+    if (x==4) {
+        return(2)
+    } else {
+        return(x)
+    }
+})
+
+tmp <- sapply(tmp,function(x) {
+    if (x==5) {
+        return(4)
+    } else {
+        return(x)
+    }
+})
+
+pbmc_container[["subclusters"]][["cM"]][["res:0.5"]] <- tmp
+
+### for testing purposes only
+# need to look at subtype proportions vs dscores
+# Want to:
+# double check associations
+# see what the deal is with an overlapping top donors for contradictory factors
+container <- pbmc_container
+ctype <- 'cM'
+res <- 0.5
+resolution_name <- paste0('res:',as.character(res))
+subclusts <- container$subclusters[[ctype]][[resolution_name]]
+
+# append large cell type name to subclusters
+subclusts <- sapply(subclusts,function(x){paste0(ctype,'_',x)})
+
+# limit cells in subclusts to those that we actually have scores for
+donor_scores <- container$tucker_results[[1]]
+donor_vec <- container$scMinimal_full$metadata[names(subclusts),'donors']
+subclusts <- subclusts[donor_vec %in% rownames(donor_scores)]
+
+# make subtype association plot
+subclusts_num <- sapply(subclusts,function(x){as.numeric(strsplit(x,split="_")[[1]][[2]])})
+scMinimal <- container$scMinimal_ctype[[ctype]]
+sub_meta_tmp <- scMinimal$metadata[names(subclusts),]
+
+# get donor proportions of subclusters
+donor_props <- compute_donor_props(subclusts_num,sub_meta_tmp)
+
+
+subtype_associations <- get_indv_subtype_associations(pbmc_container,donor_props,5)
+
+
+
+
+subtype <- donor_props[,5,drop=FALSE]
+
+# add a second column with value of 1 - first column
+subtype <- cbind(subtype,1-subtype)
+
+# get balances
+donor_balances <- coda.base::coordinates(subtype)
+
+
+
+# for trying coordinates on counts
+clusts <- subclusts_num
+metadata <- sub_meta_tmp
+
+# got donor_props count version from compute_donor_props
+donor_balances <- coda.base::coordinates(donor_props)
+
+
+
+
+# append dscores for factor 4
+donor_props2 <- cbind(donor_props,donor_scores[rownames(donor_props),4])
+colnames(donor_props2)[ncol(donor_props2)] <- 'dsc'
+
+ggplot(as.data.frame(donor_props2),aes(x=as.numeric(dsc),y=as.numeric(K2))) +
+    geom_point()
+
+# append disease status
+meta <- unique(container$scMinimal_full$metadata[,c('donors','Status')])
+rownames(meta) <- meta$donors
+donor_props2 <- cbind(donor_props2,as.character(meta[rownames(donor_props2),'Status']))
+colnames(donor_props2)[ncol(donor_props2)] <- 'Status'
+
+ggplot(as.data.frame(donor_props2),aes(x=as.numeric(dsc),y=as.numeric(K3),color=as.factor(Status))) +
+    geom_point()
+
+
+
+# see if any high loading donors from f1 are low loading in f3
+top_f1 <- donor_scores[,1]
+top_f1 <- top_f1[order(top_f1,decreasing=TRUE)][1:10]
+
+top_f3 <- donor_scores[,3]
+top_f3 <- top_f3[order(top_f3,decreasing=FALSE)][1:10]
+
+sum(names(top_f3) %in% names(top_f1))
+
+top_f3[names(top_f3) %in% names(top_f1)]
+
+
+
+
+
+
+
+## trying to compute donor props using total cell numbers
+clusts <- subclusts_num
+metadata <- sub_meta_tmp
+
+names(clusts) <- metadata[names(clusts),"donors"]
+all_donors <- unique(as.character(metadata$donors))
+
+# store results in df
+donor_props <- data.frame(matrix(0,ncol=length(unique(clusts)),nrow = length(all_donors)))
+colnames(donor_props) <- sapply(1:ncol(donor_props),function(x) {
+    paste0('K',as.character(x))
+})
+rownames(donor_props) <- all_donors
+for (d in all_donors) {
+    tmp_clusts <- clusts[names(clusts)==d]
+    counts <- table(tmp_clusts)
+    names(counts) <- sapply(names(counts),function(x) {
+        paste0('K',as.character(x))
+    })
+    for (j in 1:length(counts)) {
+        donor_props[d,names(counts)[j]] <- counts[j]
+    }
+}
+donor_props <- donor_props + 1 #adding pseudocount to avoid infinities when make balances
+# donor_props <- t(apply(donor_props, 1, function(i) i/sum(i))) # counts -> props
+
+new_totals <- table(container$scMinimal_full$metadata$donors)
+donor_props <- t(sweep(t(donor_props),MARGIN=2,new_totals[rownames(donor_props)],FUN='/'))
+subtype_associations <- get_indv_subtype_associations(container,donor_props,1)
+subtype_associations
+
+
+
+
+
+# I want to explore some of the differences a bit to see why some new things are significant and old are not...
+container <- pbmc_container
+ctype <- 'T8'
+res <- 0.6
+resolution_name <- paste0('res:',as.character(res))
+subclusts <- container$subclusters[[ctype]][[resolution_name]]
+
+# append large cell type name to subclusters
+subclusts <- sapply(subclusts,function(x){paste0(ctype,'_',x)})
+
+# limit cells in subclusts to those that we actually have scores for
+donor_scores <- container$tucker_results[[1]]
+donor_vec <- container$scMinimal_full$metadata[names(subclusts),'donors']
+subclusts <- subclusts[donor_vec %in% rownames(donor_scores)]
+
+# make subtype association plot
+subclusts_num <- sapply(subclusts,function(x){as.numeric(strsplit(x,split="_")[[1]][[2]])})
+scMinimal <- container$scMinimal_ctype[[ctype]]
+sub_meta_tmp <- scMinimal$metadata[names(subclusts),]
+
+# get donor proportions of subclusters
+donor_props <- compute_donor_props(subclusts_num,sub_meta_tmp)
+
+# append dscores for factor 4
+donor_props2 <- cbind(donor_props,donor_scores[rownames(donor_props),1])
+colnames(donor_props2)[ncol(donor_props2)] <- 'dsc'
+
+ggplot(as.data.frame(donor_props2),aes(x=as.numeric(dsc),y=as.numeric(K3))) +
+    geom_point()
+
+# append disease status
+meta <- unique(container$scMinimal_full$metadata[,c('donors','Status')])
+rownames(meta) <- meta$donors
+donor_props2 <- cbind(donor_props2,as.character(meta[rownames(donor_props2),'Status']))
+colnames(donor_props2)[ncol(donor_props2)] <- 'Status'
+
+ggplot(as.data.frame(donor_props2),aes(x=as.numeric(dsc),y=as.numeric(K1),color=as.factor(Status))) +
+    geom_point()
+
+
+# trying different way to get balances
+subtype_associations <- get_indv_subtype_associations(container,donor_props,5)
+
+lmres <- lm(as.numeric(dsc)~as.numeric(K3),data=as.data.frame(donor_props2))
+summary(lmres)
+
+j <- 3
+tmp <- donor_props[,j,drop=FALSE]
+donor_props <- donor_props[,-j]
+donor_props <- cbind(donor_props,tmp)
+# donor_balances <- coda.base::coordinates(donor_props)
+donor_balances <- compositions::ilr(donor_props)
+rownames(donor_balances) <- rownames(donor_props)
+donor_balances <- donor_balances[,ncol(donor_balances),drop=FALSE]
+donor_props2 <- cbind(donor_balances,donor_scores[rownames(donor_balances),4])
+colnames(donor_props2)[ncol(donor_props2)] <- 'dsc'
+meta <- unique(container$scMinimal_full$metadata[,c('donors','Status')])
+rownames(meta) <- meta$donors
+donor_props2 <- cbind(donor_props2,as.character(meta[rownames(donor_props2),'Status']))
+colnames(donor_props2)[ncol(donor_props2)] <- 'Status'
+colnames(donor_props2)[1] <- 'ilr4'
+
+ggplot(as.data.frame(donor_props2),aes(x=as.numeric(dsc),y=as.numeric(ilr4),color=as.factor(Status))) +
+    geom_point()
+
+head(donor_props2)
+
+donor_props2 <- as.data.frame(donor_props2)
+donor_props2$dsc <- as.numeric(donor_props2$dsc)
+donor_props2$ilr4 <- as.numeric(donor_props2$ilr4)
+rownames(donor_props2)[order(donor_props2[,'ilr4'],decreasing=F)][1:10]
+
+
+container <- get_subclust_enr_hmap(container,all_ctypes,all_res,1:10)
+container$plots$subc_enr_hmap
+
+
+# getting donors with top scores for factor 7
+tmp <- container$tucker_results[[1]][,7]
+cool <- names(tmp)[tmp>.1]
+
+test <- plot_dscore_enr(pbmc_container,factor_use=6,meta_var='Status')
+test
+
+
+
+
+# for testing enrichment of anergic pathway among factorss associated with naive cd4 depletion
+my_pathways2 <- my_pathways[c('GSE46242_TH1_VS_ANERGIC_TH1_CD4_TCELL_DN','GSE46242_TH1_VS_ANERGIC_TH1_CD4_TCELL_UP','GSE5960_TH1_VS_ANERGIC_TH1_DN','GSE5960_TH1_VS_ANERGIC_TH1_UP')]
+
+plt <- plotEnrichment(mypaths[[meta_vals[i]]],
+                      myranks) + labs(title=paste0('',' - Factor ',as.character(6)))
+plt <- plt +
+    annotate(geom="text",  x=Inf, y=Inf, hjust=1,vjust=1, col="black",
+             label=paste0('adj pval: ',
+                          round(fgseaRes[fgseaRes$pathway==meta_vals[i],'padj'],digits=4)))
+
+
+tmp <- fgsea_res[3,8][[1]][[1]]
+
+
+pbmc_container <- plot_donor_sig_genes(pbmc_container, factor_select=6,
+                                       ctypes_use=c('cM','T8','NK','T4','ncM','cDC','B'),
+                                       top_n_per_ctype=c(5,5,5,5,5,5,5),
+                                       show_donor_labels=FALSE,
+                                       additional_meta='Status',
+                                       add_genes=tmp)
+
+pbmc_container$plots$donor_sig_genes[['6']]
+
+# a few caveats:
+# -the relatively borderline pvalue
+# -the gene set is from mouse
+# -
+
+
+
+
+# LR interaction analysis
+lr_pairs <- read.csv(file='/home/jmitchel/data/LR_datasets/NicheNet-LR-pairs.csv')
+lr_pairs <- lr_pairs[,c('from','to')]
+
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/LR_f1.pdf", useDingbats = FALSE,
+    width = 9, height = 9)
+tmp <- get_LR_interact(container,lr_pairs,1)
+dev.off()
+
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/LR_f2.pdf", useDingbats = FALSE,
+    width = 9, height = 9)
+tmp <- get_LR_interact(container,lr_pairs,2)
+dev.off()
+
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/LR_f4.pdf", useDingbats = FALSE,
+    width = 9, height = 9)
+tmp <- get_LR_interact(container,lr_pairs,4)
+dev.off()
+
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_v2/LR_f5.pdf", useDingbats = FALSE,
+    width = 9, height = 9)
+tmp <- get_LR_interact(container,lr_pairs,5)
+dev.off()
+
+
+
+
 
 

@@ -1069,3 +1069,322 @@ dev.off()
 
 
 
+
+
+
+
+
+#### exploring new idea for LR interactions
+container <- pbmc_container
+
+factor_select <- 5
+
+### prep stuff from lr fn
+ctypes_use <- container$experiment_params$ctypes_use
+
+# extract significance of all genes in all ctypes and put in list
+sig_vectors <- get_significance_vectors(container,
+                                        factor_select, ctypes_use)
+# convert list to df
+sig_df <- t(as.data.frame(do.call(rbind, sig_vectors)))
+
+# set 0 pvals to the min nonzero pval and take -log10
+min_nonz <- min(sig_df[sig_df!=0])
+sig_df[sig_df==0] <- min_nonz
+sig_df <- -log10(sig_df)
+
+# sign sig_df by loading
+ldngs <- container$tucker_results[[2]]
+genes <- sapply(colnames(ldngs),function(x){strsplit(x,split=":")[[1]][2]})
+ctypes <- sapply(colnames(ldngs),function(x){strsplit(x,split=":")[[1]][1]})
+sr_col <- ldngs[factor_select,]
+tmp_casted_num <- reshape_loadings(sr_col,genes,ctypes)
+tmp_casted_num <- tmp_casted_num[rownames(sig_df),colnames(sig_df)]
+neg_mask <- tmp_casted_num < 0
+sig_df[neg_mask] <- sig_df[neg_mask] * -1
+###
+
+lr_pairs <- read.csv(file='/home/jmitchel/data/LR_datasets/Human-2020-Jin-LR-pairs.csv')
+
+# first identify ligands significantly associated with dscore for a factor
+ligs <- lr_pairs[,'ligand']
+ligs <- unique(ligs)
+
+sig_ligs <- list()
+for (lig in ligs) {
+    if (lig %in% rownames(sig_df)) {
+        for (ct in ctypes_use) {
+            sig_val <- sig_df[lig,ct]
+            if (abs(sig_val) > -log10(.01)) {
+                sig_ligs[[paste0(lig,'_',ct)]] <- sig_val
+            }
+        } 
+    }
+}
+
+print(sig_ligs)
+
+# pick a ligand, see if receptor(s) present in any cell type
+mylig <- 'RETN'
+mylig <- 'LAIR1'
+mylig <- 'THBS1'
+mylig <- 'ADM'
+
+myrec <- lr_pairs[lr_pairs$ligand==mylig,]
+recs <- lapply(myrec$interaction_name,function(x) {
+    tmp <- strsplit(x,split='_')[[1]]
+    myrecs <- tmp[2:length(tmp)]
+    return(myrecs)
+})
+
+print(recs)
+
+# container <- get_pseudobulk(container)
+# container <- normalize_pseudobulk(container, method='trim', scale_factor=10000)
+
+lig_pos <- FALSE
+r_thresh <- .01
+for (j in 1:length(recs)) {
+    rs <- recs[[j]]
+    num_in_df <- sum(rs %in% rownames(sig_df))
+    if (num_in_df == length(rs)) {
+        for (ct in ctypes_use) {
+            # need to use pseudobulked/normalized expression (but not scaled!)
+            pb <- container$scMinimal_ctype[[ct]]$pseudobulk
+            checks <- list()
+            for (r in rs) {
+                # determine direction of ligand expressing donors
+                if (lig_pos) {
+                    dsc <- container$tucker_results[[1]]
+                    tmp <- dsc[,factor_select]
+                    tmp <- tmp[order(tmp,decreasing=TRUE)]
+                    top_n <- names(tmp)[1:10]
+                    d_exp <- sum(pb[top_n,r] > r_thresh)
+                    if (d_exp == 10) {
+                        checks[[r]] <- TRUE
+                    } else {
+                        checks[[r]] <- FALSE
+                    }
+                } else {
+                    dsc <- container$tucker_results[[1]]
+                    tmp <- dsc[,factor_select]
+                    tmp <- tmp[order(tmp,decreasing=FALSE)]
+                    top_n <- names(tmp)[1:10]
+                    d_exp <- sum(pb[top_n,r] > r_thresh)
+                    if (d_exp == 10) {
+                        checks[[r]] <- TRUE
+                    } else {
+                        checks[[r]] <- FALSE
+                    }
+                }
+            }
+            if (sum(unlist(checks))==length(checks)) {
+                print(rs)
+                print(ct)
+            }
+        }
+    }
+}
+
+
+genes_test <- rownames(sig_df)[sig_df[,'ncM']<log10(.01)]
+print(genes_test[1:30])
+
+genes_test <- rownames(sig_df)[sig_df[,'cM']<log10(.01)]
+print(genes_test[1:30])
+
+genes_test <- rownames(sig_df)[sig_df[,'T4']<log10(.01)]
+print(genes_test[1:30])
+
+sig_df_tmp <- sig_df[,colnames(sig_df)!='cM']
+sig_genes_other <- rownames(sig_df_tmp)[rowSums(sig_df_tmp<log10(.01)) > 0]
+genes_test <- genes_test[!(genes_test %in% sig_genes_other)]
+
+sig_df_tmp <- sig_df[,colnames(sig_df)!='T4']
+sig_genes_other <- rownames(sig_df_tmp)[rowSums(sig_df_tmp<log10(.01)) > 0]
+genes_test <- genes_test[!(genes_test %in% sig_genes_other)]
+
+dsc <- container$tucker_results[[1]]
+tmp <- dsc[,factor_select]
+
+pb <- container$scMinimal_ctype[['ncM']]$pseudobulk
+pb <- container$scMinimal_ctype[['cM']]$pseudobulk
+pb <- container$scMinimal_ctype[['T4']]$pseudobulk
+
+tmp2 <- cbind(tmp,pb[names(tmp),'HMGB2'])
+plot(tmp2[,1],tmp2[,2])
+
+tmp2 <- cbind(tmp,pb[names(tmp),'IL1R2'])
+plot(tmp2[,1],tmp2[,2])
+
+# can look for genes with high spearman correlation to HMGB2
+res <- list()
+for (g in genes_test) {
+    tmp2 <- cbind(pb[names(tmp),'UGCG'],pb[names(tmp),g])
+    mycor <- cor(tmp2,method='spearman')[1,2]
+    res[[g]] <- mycor
+}
+res <- unlist(res)
+res <- res[order(res,decreasing=TRUE)]
+print(res[1:10])
+
+tmp2 <- cbind(tmp,pb[names(tmp),'FKBP5'])
+plot(tmp2[,1],tmp2[,2])
+
+tmp2 <- cbind(tmp,pb[names(tmp),'ZFAND5'])
+plot(tmp2[,1],tmp2[,2])
+
+tmp2 <- cbind(tmp,pb[names(tmp),'ETS2'])
+plot(tmp2[,1],tmp2[,2])
+
+tmp2 <- cbind(tmp,pb[names(tmp),'CXCR4'])
+plot(tmp2[,1],tmp2[,2])
+
+tmp2 <- cbind(tmp,pb[names(tmp),'ISG15'])
+plot(tmp2[,1],tmp2[,2])
+
+tmp2 <- cbind(tmp,pb[names(tmp),'IFI6'])
+plot(tmp2[,1],tmp2[,2])
+
+# trying to normalize by receptor levels
+rlevs <- pb[names(tmp),'CD36']
+sum(rlevs==0)
+tmp2 <- cbind(tmp,pb[names(tmp),'SESN1']/rlevs)
+plot(tmp2[,1],tmp2[,2])
+
+
+
+# negative controls
+tmp2 <- cbind(tmp,pb[names(tmp),'ISG15'])
+plot(tmp2[,1],tmp2[,2])
+
+tmp2 <- cbind(tmp,pb[names(tmp),'IFI6'])
+plot(tmp2[,1],tmp2[,2])
+
+
+
+# looking at ligand expression
+pb <- container$scMinimal_ctype[['cDC']]$pseudobulk
+
+tmp2 <- cbind(tmp,pb[names(tmp),'RETN'])
+plot(tmp2[,1],tmp2[,2])
+
+tmp2 <- cbind(tmp,pb[names(tmp),'THBS1'])
+plot(tmp2[,1],tmp2[,2])
+
+pb <- container$scMinimal_ctype[['cM']]$pseudobulk
+tmp2 <- cbind(tmp,pb[names(tmp),'ADM'])
+plot(tmp2[,1],tmp2[,2])
+
+pb <- container$scMinimal_ctype[['cM']]$pseudobulk
+tmp2 <- cbind(tmp,pb[names(tmp),'ZBTB16'])
+plot(tmp2[,1],tmp2[,2])
+
+
+# look at combined ligand levels for all expressing ctypes
+pb <- container$scMinimal_ctype[['cM']]$pseudobulk
+
+pb1 <- container$scMinimal_ctype[['cDC']]$pseudobulk
+pb2 <- container$scMinimal_ctype[['cM']]$pseudobulk
+pb3 <- container$scMinimal_ctype[['ncM']]$pseudobulk
+
+tmp2 <- cbind(tmp,pb1[names(tmp),'ADM']+pb2[names(tmp),'ADM']+pb3[names(tmp),'ADM'])
+plot(tmp2[,1],tmp2[,2])
+
+
+res <- list()
+for (i in 1:ncol(pb)) {
+    tmp3 <- cbind(pb[names(tmp),i],tmp2[,2])
+    mycor <- cor(tmp3,method='pearson')[1,2]
+    res[[colnames(pb)[i]]] <- mycor
+}
+res <- unlist(res)
+res <- res[order(res,decreasing=TRUE)]
+print(res[1:10])
+
+
+
+
+pb1 <- container$scMinimal_ctype[['T8']]$pseudobulk
+pb2 <- container$scMinimal_ctype[['T4']]$pseudobulk
+
+tmp2 <- cbind(tmp,pb1[names(tmp),'CD70']+pb2[names(tmp),'CD70'])
+plot(tmp2[,1],tmp2[,2])
+
+
+# look at receptor levels
+pb <- container$scMinimal_ctype[['T4']]$pseudobulk
+
+tmp2 <- cbind(tmp,pb[names(tmp),'CD36'])
+plot(tmp2[,1],tmp2[,2])
+
+
+
+# incorporate ratio to receptor levels
+# use total ligand expression levels from the different cell types (maybe)
+# show plots for "negative controls" things like ISG15, which are associated with 
+# score but shouldn't show the expected trend
+
+
+# looking to see if CALCRL explains ZBTB16 levels
+
+pb <- container$scMinimal_ctype[['cM']]$pseudobulk
+tmp2 <- cbind(pb[names(tmp)[1:12],'CALCRL'],pb[names(tmp)[1:12],'ZBTB16'])
+plot(tmp2[,1],tmp2[,2])
+
+# doesnt really appear to explain it... 
+# now I'll do unbiased search of receptors that might explain it
+lr_pairs <- read.csv(file='/home/jmitchel/data/LR_datasets/NicheNet-LR-pairs.csv')
+lr_pairs <- lr_pairs[,c('from','to')]
+myres <- list()
+rs_test <- unique(lr_pairs$to)
+for (r in rs_test) {
+    if (r %in% colnames(pb)) {
+        tmp2 <- as.data.frame(cbind(pb[names(tmp)[1:12],r],pb[names(tmp)[1:12],'ZBTB16']))
+        colnames(tmp2) <- c('rec','sig')
+        lmres <- lm(sig~rec,data=tmp2)
+        lmres <- summary(lmres)
+        # myres[[r]] <-  lmres$fstatistic[[1]]
+        myres[[r]] <- stats::pf(lmres$fstatistic[1],lmres$fstatistic[2],lmres$fstatistic[3],lower.tail=FALSE)
+    }
+}
+
+myres <- unlist(myres)
+myres <- p.adjust(myres,method='fdr')
+myres[order(myres,decreasing=F)][1:10]
+# myres[order(myres,decreasing=TRUE)][1:10]
+
+tmp2 <- cbind(pb[names(tmp)[1:12],'CD47'],pb[names(tmp)[1:12],'ZBTB16'])
+plot(tmp2[,1],tmp2[,2])
+
+
+# I also showed increased levels of THBS1 in these patients and this happens to be the
+# ligand for the CD47 gene!
+# I wonder if I can use this to estimate Kd values for signal transduction since I have
+# relative ligand and receptor levels and saturation
+
+
+# to gain further evidence, I should see if CD47 correlates with residuals of other genes with the same patterns
+# will try FKBP5
+
+tmp2 <- cbind(pb[names(tmp)[1:12],'CD47'],pb[names(tmp)[1:12],'FKBP5'])
+plot(tmp2[,1],tmp2[,2])
+
+# it looks pretty okay actually
+# whats the pvalue though?
+
+tmp2 <- as.data.frame(cbind(pb[names(tmp)[1:12],'CD47'],pb[names(tmp)[1:12],'FKBP5']))
+colnames(tmp2) <- c('rec','sig')
+lmres <- lm(sig~rec,data=tmp2)
+lmres <- summary(lmres)
+
+
+# trying also for CCND3
+tmp2 <- cbind(pb[names(tmp)[1:12],'CD47'],pb[names(tmp)[1:12],'CCND3'])
+plot(tmp2[,1],tmp2[,2])
+
+
+
+
+
+

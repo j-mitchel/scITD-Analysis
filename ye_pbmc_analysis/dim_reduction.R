@@ -69,6 +69,7 @@ panel.preprocessed <- lapply(panel, pagoda2::basicP2proc, n.cores=ncores,
                              get.largevis=FALSE, make.geneknn=FALSE)
 
 saveRDS(panel.preprocessed,file='/home/jmitchel/data/lupus_data/lupus_pagoda.rds')
+saveRDS(panel.preprocessed,file='/home/jmitchel/data/lupus_data/lupus_pagoda2.rds')
 
 con <- conos::Conos$new(panel.preprocessed, n.cores=ncores)
 
@@ -78,12 +79,125 @@ con$buildGraph()
 saveRDS(con,file='/home/jmitchel/data/lupus_data/lupus_conos.rds')
 
 # make umap embedding
-con$embedGraph(method="UMAP", min.dist=0.01, spread=15, n.cores=ncores, min.prob.lower=1e-3)
+con$embedGraph(method="UMAP", min.dist=0.01, spread=15, min.prob.lower=1e-3)
 
-# assign ctype names to the cells
 con$findCommunities(method=conos::leiden.community, resolution=1)
 cell_assigns <- container$scMinimal_full$metadata[,"ctypes"]
 names(cell_assigns) <- rownames(container$scMinimal_full$metadata)
 con$clusters$leiden$groups <- cell_assigns[names(con$clusters$leiden$groups)]
 
-saveRDS(con,file='/home/jmitchel/data/lupus_data/lupus_conos.rds')
+saveRDS(con,file='/home/jmitchel/data/lupus_data/lupus_conos2.rds')
+
+
+
+
+## attempting to rebuild conos object from pagoda object as I can no longer run DE with it...
+panel.preprocessed <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_pagoda.rds')
+con <- conos::Conos$new(panel.preprocessed, n.cores=25)
+container <- pbmc_container
+
+con$findCommunities(method=conos::leiden.community, resolution=1)
+
+container <- pbmc_container
+cell_assigns <- container$scMinimal_full$metadata[,"ctypes"]
+names(cell_assigns) <- rownames(container$scMinimal_full$metadata)
+
+# assign ctype names to the cells
+old_con <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_conos.rds')
+
+# check that names in the embedding match those of leiden groups
+rownames(old_con[["embedding"]])[1:5] # they are cell bcodes
+length(rownames(old_con[["embedding"]]))
+names(old_con$clusters$leiden$groups)[1:5]
+length(names(old_con$clusters$leiden$groups))
+sum(names(old_con$clusters$leiden$groups) == rownames(old_con[["embedding"]]))
+# seems like the cell names are same for both bot not all in same order
+
+# put old embedding in new con object
+con$embedding <- old_con[["embedding"]]
+
+con$clusters$leiden$groups <- cell_assigns[rownames(con$embedding)]
+test_de <- con$getDifferentialGenes()
+# still doesnt work...
+
+# trying with labels removed again
+con$clusters$leiden$groups <- NULL
+test_de <- con$getDifferentialGenes()
+# seems to work without error
+
+# trying to make labels factors
+con$clusters$leiden$groups <- as.factor(cell_assigns[rownames(con$embedding)])
+test_de <- con$getDifferentialGenes()
+# nope
+
+# trying to remove embedding
+con$embedding <- NULL
+test_de <- con$getDifferentialGenes()
+# still nope
+
+# trying to recompute embedding
+con <- conos::Conos$new(panel.preprocessed, n.cores=25)
+con$buildGraph()
+con$embedGraph(method="UMAP", min.dist=0.01, spread=15, n.cores=ncores, min.prob.lower=1e-3)
+con$findCommunities(method=conos::leiden.community, resolution=1)
+# okay, seems like I'm going to have to recompute my panel from the start...
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -217,8 +217,7 @@ pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(2,4,2),
 
 # plot donor scores
 pbmc_container <- plot_donor_matrix(pbmc_container,
-                                    show_donor_ids = TRUE,
-                                    add_meta_associations=FALSE)
+                                    show_donor_ids = TRUE)
 
 pdf(file = "/home/jmitchel/figures/for_paper/sim_dscores.pdf", useDingbats = FALSE,
     width = 5, height = 5)
@@ -331,13 +330,13 @@ dev.off()
 
 
 
-# save raw sim data so can reproduce it
-# parameters used were medium tree as ((A:2,B:2,C:0):4,(D:2,E:2,F:0):4);
-# ncells_total=4000, min_popsize=600, ngenes=ngenes, nevf=60, evf_type="discrete", n_de_evf=45, vary="s", Sigma=0.5, phyla=phyla2, randseed=2
-saveRDS(mycounts,'/home/jmitchel/data/sim_data/sim1_counts.rds')
-saveRDS(meta,'/home/jmitchel/data/sim_data/sim1_meta.rds')
-saveRDS(true_counts_res,'/home/jmitchel/data/sim_data/sim1_true_counts.rds')
-saveRDS(list(tsne_true_counts[[2]],tsne_UMI_counts[[2]],p),'/home/jmitchel/data/sim_data/dim_reduction_plts.rds')
+# # save raw sim data so can reproduce it
+# # parameters used were medium tree as ((A:2,B:2,C:0):4,(D:2,E:2,F:0):4);
+# # ncells_total=4000, min_popsize=600, ngenes=ngenes, nevf=60, evf_type="discrete", n_de_evf=45, vary="s", Sigma=0.5, phyla=phyla2, randseed=2
+# saveRDS(mycounts,'/home/jmitchel/data/sim_data/sim1_counts.rds')
+# saveRDS(meta,'/home/jmitchel/data/sim_data/sim1_meta.rds')
+# saveRDS(true_counts_res,'/home/jmitchel/data/sim_data/sim1_true_counts.rds')
+# saveRDS(list(tsne_true_counts[[2]],tsne_UMI_counts[[2]],p),'/home/jmitchel/data/sim_data/dim_reduction_plts.rds')
 
 
 # test out rank determination accuracy
@@ -354,6 +353,142 @@ pdf(file = "/home/jmitchel/figures/for_paper/sim_rank_determination.pdf", useDin
     width = 7, height = 7)
 pbmc_container$plots$rank_determination_plot
 dev.off()
+
+
+
+
+
+
+## evaluate performance at varying number of cells per donor
+mycounts <- readRDS('/home/jmitchel/data/sim_data/sim1_counts.rds')
+meta <- readRDS('/home/jmitchel/data/sim_data/sim1_meta.rds')
+true_counts_res <- readRDS('/home/jmitchel/data/sim_data/sim1_true_counts.rds')
+tmp <- readRDS('/home/jmitchel/data/sim_data/dim_reduction_plts.rds')
+
+tsne_true_counts <- list()
+tsne_UMI_counts <- list()
+tsne_true_counts[[2]] <- tmp[[1]]
+tsne_UMI_counts[[2]] <- tmp[[2]]
+
+# get vec of donors
+all_donors <- unique(meta$donors)
+
+# get number of donors
+num_donors <- length(all_donors)
+
+cells_per_donor <- table(meta$donors)
+
+sizes_test <- c(15,20,30,40,50,60,70,80)
+sizes_test <- c(15,20)
+downsample_sizes <- num_donors * 2 * sizes_test
+
+for (ds in downsample_sizes) {
+  # subsample data to correct mean size 
+  prev_subs <- list(cool)
+  prev_ident <- FALSE
+  
+  min_cpd <- 0
+  while (min_cpd < 5 | prev_ident) {
+    prev_ident <- FALSE
+    cells_sampled <- sample(colnames(mycounts),ds)
+    meta_sub <- meta[cells_sampled,]
+    cells_per_donor <- table(meta_sub[,c(2,3)])
+    min_cpd <- min(cells_per_donor)
+    
+    # determine whether subsampling was previously recorded
+    for (j in 1:length(prev_subs)) {
+      if (identical(prev_subs[[j]],cells_sampled)) {
+        prev_ident <- TRUE
+      }
+    }
+  }
+  prev_subs[[length(prev_subs)+1]] <- cells_sampled
+  
+  counts_sub <- mycounts[,cells_sampled]
+  
+  # prep data
+  param_list <- initialize_params(ctypes_use = c("ct1", "ct2"),
+                                  ncores = 30, rand_seed = 10)
+  
+  pbmc_container <- make_new_container(count_data=counts_sub, meta_data=meta_sub,
+                                       params=param_list)
+  
+  pbmc_container <- form_tensor(pbmc_container, donor_min_cells=5, gene_min_cells=5,
+                                norm_method='trim', scale_factor=10000, 
+                                vargenes_method='norm_var', vargenes_thresh=500,
+                                scale_var = TRUE, var_scale_power = .5)
+  
+  # do decomposition
+  pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(2,4,2),
+                                   tucker_type = 'regular', rotation_type = 'ica')
+  
+  
+  # check that decomposition is as expected
+  dscores <- pbmc_container$tucker_results[[1]]
+  if (max(dscores[,1]) > .2 && min(dscores[,1]) < -.2) {
+    print('potential problem')
+    break
+  }
+  
+  # get significant genes
+  
+  # evaluate AUC
+  
+  # store results
+}
+
+
+# plot donor scores
+pbmc_container <- plot_donor_matrix(pbmc_container,
+                                    show_donor_ids = TRUE)
+
+pbmc_container$plots$donor_matrix
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

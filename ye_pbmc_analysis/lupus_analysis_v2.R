@@ -30,28 +30,41 @@ pbmc_container <- make_new_container(seurat_obj=pbmc,
                                                        'processing'))
 
 
-# ## initial test with no batch correction
-# pbmc_container <- form_tensor(pbmc_container, donor_min_cells=20, gene_min_cells=20,
-#                               norm_method='trim', scale_factor=10000,
-#                               vargenes_method='norm_var_pvals', vargenes_thresh=.05,
-#                               scale_var = TRUE, var_scale_power = 1.5)
-# 
-# pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(20,30,7),
-#                                  tucker_type = 'regular', rotation_type = 'ica')
-# 
-# # get factor-meta data associations
-# pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('sex','pool','processing'))
-# 
-# # plot donor scores
-# pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex','pool','processing'),
-#                                     cluster_by_meta='pool',
-#                                     show_donor_ids = FALSE,
-#                                     add_meta_associations=TRUE)
-# 
+## initial test with no batch correction
+pbmc_container <- form_tensor(pbmc_container, donor_min_cells=20, gene_min_cells=20,
+                              norm_method='trim', scale_factor=10000,
+                              vargenes_method='norm_var_pvals', vargenes_thresh=.05,
+                              scale_var = TRUE, var_scale_power = 1.5)
+
+pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(20,30,7),
+                                 tucker_type = 'regular', rotation_type = 'ica')
+
+# get factor-meta data associations
+pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('sex','pool','processing'))
+
+# plot donor scores
+pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex','pool','processing'),
+                                    cluster_by_meta='pool',
+                                    show_donor_ids = FALSE,
+                                    add_meta_associations='rsq')
+#
 # pdf(file = "/home/jmitchel/figures/for_paper/lupus_no_combat_dscores.pdf", useDingbats = FALSE,
 #     width = 9, height = 8)
-# pbmc_container$plots$donor_matrix
+pbmc_container$plots$donor_matrix
 # dev.off()
+
+
+pbmc_container <- get_all_lds_factor_plots(pbmc_container, use_sig_only=T,
+                                           nonsig_to_zero=T,
+                                           display_genes=FALSE,
+                                           gene_callouts=F)
+
+pbmc_container <- run_jackstraw(pbmc_container, ranks=c(20,30,7), n_fibers=100, n_iter=1000,
+                                tucker_type='regular', rotation_type='ica')
+
+
+
+
 
 
 
@@ -93,8 +106,8 @@ pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex','Status'),
                                     show_donor_ids = FALSE,
                                     add_meta_associations='pval')
 
-# pdf(file = "/home/jmitchel/figures/for_paper/lupus_combat_dscores_by_status.pdf", useDingbats = FALSE,
-#     width = 7, height = 8)
+# pdf(file = "/home/jmitchel/figures/for_paper/lupus_dscores_v2.pdf", useDingbats = FALSE,
+#     width = 6, height = 7)
 pbmc_container$plots$donor_matrix
 dev.off()
 
@@ -103,8 +116,8 @@ pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex','Status'),
                                     show_donor_ids = FALSE,
                                     add_meta_associations='pval')
 
-pdf(file = "/home/jmitchel/figures/for_paper/lupus_combat_dscores.pdf", useDingbats = FALSE,
-    width = 7, height = 8)
+# pdf(file = "/home/jmitchel/figures/for_paper/lupus_combat_dscores.pdf", useDingbats = FALSE,
+#     width = 6, height = 7)
 pbmc_container$plots$donor_matrix
 dev.off()
 
@@ -213,6 +226,11 @@ plot_gsea_sub(pbmc_container,factor_select=5,direc='down',thresh=.05,clust_selec
 
 
 
+
+
+
+
+
 ## now for cell subtype proportion analysis
 # add conos object for cell proportion analysis
 con <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_conos.rds')
@@ -311,9 +329,17 @@ dev.off()
 
 
 # create main embedding for lupus data
-pbmc_container$embedding$plotGraph(alpha=0.1)
+tmp <- pbmc_container$embedding$plotGraph(alpha=0.1)
+tmp <- tmp + theme(panel.grid.major = element_blank(), 
+      panel.grid.minor = element_blank(),
+      panel.background = element_rect(colour = "black", size=1, fill=NA))
+tmp$layers[[2]] <- NULL
 
 
+pdf(file = "/home/jmitchel/figures/for_paper/lupus_embedding.pdf", useDingbats = FALSE,
+    width = 7, height = 7)
+tmp
+dev.off()
 
 # create UMAP using donor scores
 pbmc_container <- plot_donor_umap(pbmc_container, color_by_factor=c(1:10), 
@@ -721,7 +747,7 @@ mod_enr
 ctypes <- c('NK','cDC','ncM','cM','T4','T8')
 modules <- c(2,1,1,1,2,3)
 
-mod_enr <- plot_multi_module_enr(pbmc_container, ctypes, modules, sig_thresh=.1, db_use=c('TF'))
+mod_enr <- plot_multi_module_enr(pbmc_container, ctypes, modules, sig_thresh=.25, db_use=c('TF'))
 mod_enr
 
 mod_enr <- plot_multi_module_enr(pbmc_container, ctypes, modules, sig_thresh=.05, db_use=c('Hallmark'))

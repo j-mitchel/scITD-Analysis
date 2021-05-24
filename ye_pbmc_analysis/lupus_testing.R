@@ -2119,5 +2119,34 @@ tmp <- pbmc_container[["gsea_res_full"]][["Factor5"]][["cM"]]
 le <- tmp[tmp$pathway=='HALLMARK_TNFA_SIGNALING_VIA_NFKB','leadingEdge'][[1]]
 
 
+# look for modules with highest correlations to F2 dscores with just lupus patients
+meta <- pbmc_container$scMinimal_full$metadata[,c('donors','Status')]
+meta <- unique(meta)
+rownames(meta) <- meta$donors
+meta$donors <- NULL
 
+dsc <- pbmc_container$tucker_results[[1]][,2]
+tmp <- cbind.data.frame(dsc,meta[names(dsc),])
+colnames(tmp) <- c('dsc','Status')
+tmp <- tmp[tmp$Status=='Managed',]
+dsc <- tmp[,1,drop=FALSE]
+
+mod_fact_r_all <- list()
+ME_pvals <- list()
+for (ct in pbmc_container$experiment_params$ctypes_use) {
+  MEs <- pbmc_container$module_eigengenes[[ct]]
+  for (j in 1:ncol(MEs)) {
+    ME <- MEs[,j,drop=FALSE]
+    
+    # calculate significance of association with factor as well as Rsq
+    tmp <- as.data.frame(cbind(dsc,ME[rownames(dsc),]))
+    colnames(tmp) <- c('dsc','eg')
+    lmres <- lm(dsc~eg,data=tmp)
+    lmres <- summary(lmres)
+    pval <- stats::pf(lmres$fstatistic[1],lmres$fstatistic[2],lmres$fstatistic[3],lower.tail=FALSE)
+    mod_fact_r <- cor(tmp[,1],tmp[,2])
+    mod_fact_r_all[[paste0(ct,'_',j)]] <- mod_fact_r
+    ME_pvals[[paste0(ct,"_",as.character(j))]] <- pval
+  }
+}
 

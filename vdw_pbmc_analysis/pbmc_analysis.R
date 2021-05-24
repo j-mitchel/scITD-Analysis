@@ -50,23 +50,26 @@ pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(5,10,5),
                                  tucker_type = 'regular', rotation_type = 'ica')
 
 # get factor-meta data associations
-pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('sex','lanes'))
+pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('sex','lanes'),
+                                        stat_use='pval')
+pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('sex'),
+                                        stat_use='pval')
 
 # plot donor scores
 pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex','lanes'),
                                     show_donor_ids = TRUE,
                                     add_meta_associations=TRUE)
 pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex','lanes'),
-                                    show_donor_ids = TRUE,
+                                    show_donor_ids = FALSE,
                                     cluster_by_meta='sex',
                                     add_meta_associations=TRUE)
 
 pbmc_container$plots$donor_matrix
 
-# pdf(file = "/home/jmitchel/figures/for_paper/pbmc_dscores.pdf", useDingbats = FALSE,
-#     width = 7, height = 7)
-# pbmc_container$plots$donor_matrix
-# dev.off()
+pdf(file = "/home/jmitchel/figures/for_paper/pbmc_dscores_v3.pdf", useDingbats = FALSE,
+    width = 6, height = 6.5)
+pbmc_container$plots$donor_matrix
+dev.off()
 
 
 # get assistance with rank determination
@@ -106,12 +109,43 @@ pbmc_container$plots$stability_plot
 
 
 # get significant genes
-pbmc_container <- run_jackstraw(pbmc_container, ranks=c(5,10,5), n_fibers=100, n_iter=1500,
+pbmc_container <- run_jackstraw(pbmc_container, ranks=c(5,10,5), n_fibers=25, n_iter=5000,
                                 tucker_type='regular', rotation_type='ica')
+
+# save significant genes
+# saveRDS(pbmc_container[["gene_score_associations"]],file='/home/jmitchel/data/van_der_wijst/pbmc_jackstraw.rds')
+pbmc_container[["gene_score_associations"]] <- readRDS(file='/home/jmitchel/data/van_der_wijst/pbmc_jackstraw.rds')
+
+
+## get loadings plots (for paper)
+pbmc_container <- get_all_lds_factor_plots(pbmc_container, use_sig_only=TRUE,
+                                           nonsig_to_zero=TRUE,
+                                           sig_thresh=.02,
+                                           display_genes=F,
+                                           gene_callouts = TRUE,
+                                           callout_n_gene_per_ctype=7,
+                                           show_var_explained = FALSE)
+
+pdf(file = "/home/jmitchel/figures/for_paper/pbmc_loadings_xy2_factor.pdf", useDingbats = FALSE,
+    width = 4, height = 4)
+draw(pbmc_container[["plots"]][["all_lds_plots"]][["2"]],
+     annotation_legend_list = pbmc_container[["plots"]][["all_legends"]][["2"]],
+     legend_grouping = "original",
+     newpage=TRUE)
+dev.off()
+
+pdf(file = "/home/jmitchel/figures/for_paper/pbmc_loadings_hbb_factor.pdf", useDingbats = FALSE,
+    width = 4, height = 3.5)
+draw(pbmc_container[["plots"]][["all_lds_plots"]][["5"]],
+     annotation_legend_list = pbmc_container[["plots"]][["all_legends"]][["5"]],
+     legend_grouping = "original",
+     newpage=TRUE)
+dev.off()
+##
 
 pbmc_container <- get_all_lds_factor_plots(pbmc_container, use_sig_only=TRUE,
                                            nonsig_to_zero=TRUE,
-                                           sig_thresh=0.02,
+                                           sig_thresh=0.05,
                                            display_genes=FALSE,
                                            gene_callouts=TRUE,
                                            callout_n_gene_per_ctype=5)
@@ -171,6 +205,11 @@ pdf(file = "/home/jmitchel/figures/for_paper/pbmc_subtype_associations.pdf", use
     width = 9, height = 7)
 pbmc_container$plots$subtype_prop_factor_associations
 dev.off()
+
+
+# # save subclustering
+# saveRDS(pbmc_container$subclusters,file='/home/jmitchel/data/van_der_wijst/pbmc_subcluster_data.rds')
+
 
 
 pbmc_container <- get_ctype_prop_associations(pbmc_container,'adj_pval',n_col=3)

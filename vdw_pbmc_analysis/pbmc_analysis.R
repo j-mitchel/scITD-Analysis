@@ -2,7 +2,7 @@
 library(scITD)
 
 # counts matrix
-pbmc_counts <- readRDS('/home/jmitchel/data/van_der_wijst/pbmc_counts_v2.rds')
+# pbmc_counts <- readRDS('/home/jmitchel/data/van_der_wijst/pbmc_counts_v2.rds')
 pbmc_counts <- readRDS('/home/jmitchel/data/van_der_wijst/pbmc_counts_v2_winsorized_simple.rds')
 
 # meta data matrix
@@ -63,11 +63,15 @@ pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex','lanes'),
                                     show_donor_ids = FALSE,
                                     cluster_by_meta='sex',
                                     add_meta_associations=TRUE)
+pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('lanes'),
+                                    show_donor_ids = TRUE,
+                                    cluster_by_meta='lanes',
+                                    add_meta_associations=TRUE)
 
 pbmc_container$plots$donor_matrix
 
-pdf(file = "/home/jmitchel/figures/for_paper/pbmc_dscores_v3.pdf", useDingbats = FALSE,
-    width = 6, height = 6.5)
+# pdf(file = "/home/jmitchel/figures/for_paper/pbmc_dscores_oqe.pdf", useDingbats = FALSE,
+#     width = 6, height = 6.5)
 pbmc_container$plots$donor_matrix
 dev.off()
 
@@ -123,7 +127,7 @@ pbmc_container <- get_all_lds_factor_plots(pbmc_container, use_sig_only=TRUE,
                                            sig_thresh=.02,
                                            display_genes=F,
                                            gene_callouts = TRUE,
-                                           callout_n_gene_per_ctype=7,
+                                           callout_n_gene_per_ctype=5,
                                            show_var_explained = FALSE)
 
 pdf(file = "/home/jmitchel/figures/for_paper/pbmc_loadings_xy2_factor.pdf", useDingbats = FALSE,
@@ -143,6 +147,31 @@ draw(pbmc_container[["plots"]][["all_lds_plots"]][["5"]],
 dev.off()
 ##
 
+pdf(file = "/home/jmitchel/figures/for_paper/pbmc_loadings_xy_oqe.pdf", useDingbats = FALSE,
+    width = 4, height = 4)
+draw(pbmc_container[["plots"]][["all_lds_plots"]][["3"]],
+     annotation_legend_list = pbmc_container[["plots"]][["all_legends"]][["3"]],
+     legend_grouping = "original",
+     newpage=TRUE)
+dev.off()
+
+pdf(file = "/home/jmitchel/figures/for_paper/pbmc_loadings_hbb_oqe.pdf", useDingbats = FALSE,
+    width = 4, height = 4)
+draw(pbmc_container[["plots"]][["all_lds_plots"]][["5"]],
+     annotation_legend_list = pbmc_container[["plots"]][["all_legends"]][["5"]],
+     legend_grouping = "original",
+     newpage=TRUE)
+dev.off()
+
+pdf(file = "/home/jmitchel/figures/for_paper/pbmc_loadings_IFN_oqe.pdf", useDingbats = FALSE,
+    width = 4.5, height = 6)
+draw(pbmc_container[["plots"]][["all_lds_plots"]][["1"]],
+     annotation_legend_list = pbmc_container[["plots"]][["all_legends"]][["1"]],
+     legend_grouping = "original",
+     newpage=TRUE)
+dev.off()
+
+
 pbmc_container <- get_all_lds_factor_plots(pbmc_container, use_sig_only=TRUE,
                                            nonsig_to_zero=TRUE,
                                            sig_thresh=0.05,
@@ -161,7 +190,7 @@ myfig
 # pdf(file = "/home/jmitchel/figures/for_paper/pbmc_f1_dsig_genes.pdf", useDingbats = FALSE,
 #     width = 9, height = 13)
 pbmc_container <- plot_donor_sig_genes(pbmc_container, factor_select=1,ctypes_use=c('cMonocyte','CD4+ T','CD8+ T','CD56(dim) NK'),
-                                       top_n_per_ctype=c(30,10,10,10), show_donor_labels=TRUE)
+                                       top_n_per_ctype=c(20,10,10,20), show_donor_labels=TRUE)
 dev.off()
 
 # pdf(file = "/home/jmitchel/figures/for_paper/pbmc_f4_dsig_genes.pdf", useDingbats = FALSE,
@@ -172,10 +201,10 @@ dev.off()
 
 
 pbmc_container <- run_gsea_one_factor(pbmc_container, factor_select=1, method="fgsea", thresh=0.05,
-                                      db_use=c("GO"), collapse_paths=FALSE)
+                                      db_use=c("GO"))
 
-# pdf(file = "/home/jmitchel/figures/for_paper/pbmc_f1_gsea.pdf", useDingbats = FALSE,
-#     width = 7, height = 8)
+pdf(file = "/home/jmitchel/figures/for_paper/pbmc_f1_gsea_oqe.pdf", useDingbats = FALSE,
+    width = 7, height = 8)
 pbmc_container[["plots"]][["gsea"]][["1"]]
 dev.off()
 
@@ -395,5 +424,111 @@ pbmc_container <- run_stability_analysis(pbmc_container, downsample_ratio=0.9,
 # look at number of significant genes for additional factors
 pbmc_container <- get_min_sig_genes(pbmc_container,donor_rank_range=c(4:9),thresh=0.05)
 pbmc_container$plots$min_sig_genes
+
+
+
+
+
+# testing out data reconstruction using new data
+d1_dat <- pbmc_container[["tensor_data"]][[4]][3,,] #donor s40
+rownames(d1_dat) <- pbmc_container$tensor_data[[2]]
+colnames(d1_dat) <- pbmc_container$tensor_data[[3]]
+f1_data <- get_one_factor(pbmc_container, factor_select=1)
+
+head(f1_data[[2]])
+head(d1_dat)
+
+# order them the same way
+d1_dat <- d1_dat[rownames(f1_data[[2]]),colnames(f1_data[[2]])]
+
+# trying to normalize by frobenius norm
+fn <- rTensor::fnorm(as.tensor(f1_data[[2]]))
+f1_data[[2]] <- f1_data[[2]] / fn
+
+# adjust donor scores as well
+f1_data[[1]] <- f1_data[[1]] * fn
+
+# multiply them together
+new_score <- sum(d1_dat * f1_data[[2]])
+print(new_score)
+
+
+
+## see if I can get new scores doing pca
+pb <- pbmc_container[["scMinimal_ctype"]][["CD4+ T"]][["pseudobulk"]]
+mysvd <- svd(pb)
+# u is left singular vector, d is singular values, v is right singular values
+
+# calculate PCs
+mypcs <- mysvd$u %*% diag(mysvd$d)
+rownames(mypcs) <- rownames(pb)
+
+# multiply expression times loadings for s1 pc1
+expr <- pb[1,,drop=FALSE]
+lds <- mysvd$v[,1,drop=FALSE]
+lds <- t(lds)
+
+sum(expr * lds)
+# okay the logic seems to check out... 
+
+# what happens if I multiply singular values by loadings, then try to norm with fnorm
+mysvd$d[1]
+lds_new <- diag(mysvd$d) %*% t(mysvd$v)
+lds_new <- lds_new[1,,drop=FALSE]
+# now what's the fnorm of this
+rTensor::fnorm(as.tensor(lds_new))
+# yup, the norm is exactly the singular value that I pulled out
+
+# what if I multiply expression by the expanded right singular values (times the $d)
+sum(expr * lds_new)
+# nah this doesn't work as anticipated
+
+## need to try an example with just regular tucker to see if it's ICA that's screwing things up
+tnsr <- container$tensor_data[[4]]
+tucker_decomp <- rTensor::tucker(rTensor::as.tensor(tnsr), ranks=c(5,10,5))
+# create loadings matrix
+gene_by_factors <- tucker_decomp$U[[2]]
+ctype_by_factors <- tucker_decomp$U[[3]]
+donor_mat <- tucker_decomp$U[[1]]
+kron_prod <- kronecker(ctype_by_factors,gene_by_factors,make.dimnames = TRUE)
+core_new <- t(as.matrix(donor_mat)) %*% rTensor::k_unfold(rTensor::as.tensor(tnsr),1)@data %*% kron_prod
+ldngs <- core_new %*% t(kron_prod)
+
+# I wonder if I actually need to do a per cell type normalization instead of using overall fnorm
+# but then I'm not sure what I'd do with the donor scores...
+
+
+
+
+
+
+## testing out if having more donors like S13 would make NK signature come out as separate factor
+head(pbmc_meta)
+s13_bcodes <- rownames(pbmc_meta)[pbmc_meta$donors=='s13']
+s13_meta <- pbmc_meta[s13_bcodes,]
+s13_counts <- pbmc_counts[,s13_bcodes]
+new_names <- sapply(colnames(s13_counts),function(x){
+  paste0(x,'_dup')
+})
+names(new_names) <- NULL
+colnames(s13_counts) <- new_names
+rownames(s13_meta) <- new_names
+
+pbmc_counts2 <- cbind.data.frame(pbmc_counts,s13_counts)
+pbmc_counts3 <- methods::as(as.matrix(pbmc_counts2),'sparseMatrix')
+
+s13_meta$donors <- rep('s99',nrow(s13_meta))
+pbmc_meta2 <- rbind.data.frame(pbmc_meta,s13_meta)
+
+
+
+
+
+
+
+
+
+
+
 
 

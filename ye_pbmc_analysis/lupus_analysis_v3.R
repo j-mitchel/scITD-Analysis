@@ -57,7 +57,7 @@ pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex'),
 pbmc_container$plots$donor_matrix
 # dev.off()
 
-
+# 
 # get significant genes
 pbmc_container <- run_jackstraw(pbmc_container, ranks=c(10,20,7), n_fibers=100, n_iter=1000,
                                 tucker_type='regular', rotation_type='ica')
@@ -65,10 +65,13 @@ pbmc_container <- run_jackstraw(pbmc_container, ranks=c(10,20,7), n_fibers=100, 
 # saveRDS(pbmc_container[["gene_score_associations"]],file='/home/jmitchel/data/lupus_data/lupus_jackstraw.rds')
 pbmc_container[["gene_score_associations"]] <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_jackstraw.rds')
 
+# # saveRDS(pbmc_container[["gene_score_associations"]],file='/home/jmitchel/data/lupus_data/lupus_jackstraw_lds_ica.rds')
+# pbmc_container[["gene_score_associations"]] <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_jackstraw_lds_ica.rds')
+
 
 # run gsea for a f4
 pbmc_container <- run_gsea_one_factor(pbmc_container, factor_select=4, method="fgsea", thresh=0.05,
-                                      db_use=c("GO"), collapse_paths=FALSE)
+                                      db_use=c("GO"))
 plot_gsea_hmap_w_similarity(pbmc_container,factor_select=4,direc='down',thresh=.05)
 
 # investigate several clusters of enriched sets
@@ -250,7 +253,7 @@ pbmc_container[["gsea_results"]] <- readRDS(file='/home/jmitchel/data/lupus_data
 
 # run gsea for a f2
 pbmc_container <- run_gsea_one_factor(pbmc_container, factor_select=2, method="fgsea", thresh=0.05,
-                                      db_use=c("GO"), collapse_paths=FALSE)
+                                      db_use=c("GO"))
 plot_gsea_hmap_w_similarity(pbmc_container,factor_select=2,direc='up',thresh=.05)
 plot_gsea_hmap_w_similarity(pbmc_container,factor_select=2,direc='down',thresh=.05)
 
@@ -1127,6 +1130,7 @@ subclusts <- sapply(subclusts,function(x){paste0(ctype,'_',x)})
 
 # limit cells in subclusts to those that we actually have scores for
 donor_scores <- pbmc_container$tucker_results[[1]]
+subclusts <- subclusts[names(subclusts) %in% rownames(pbmc_container$scMinimal_full$metadata)]
 donor_vec <- pbmc_container$scMinimal_full$metadata[names(subclusts),'donors']
 subclusts <- subclusts[donor_vec %in% rownames(donor_scores)]
 
@@ -1147,7 +1151,7 @@ rownames(meta) <- meta$donors
 meta$donors <- NULL
 head(meta)
 
-dsc <- pbmc_container$tucker_results[[1]][,4]
+dsc <- pbmc_container$tucker_results[[1]][,1]
 tmp <- as.data.frame(cbind(donor_props[names(dsc),1],dsc,as.character(meta[names(dsc),'Status']),meta[names(dsc),'Age']))
 colnames(tmp) <- c('prop','dsc','Status','Age')
 head(tmp)
@@ -1155,25 +1159,46 @@ tmp$prop <- as.numeric(tmp$prop)
 tmp$Age <- as.numeric(tmp$Age)
 tmp$dsc <- as.numeric(tmp$dsc)
 
+lmres <- lm(dsc~prop,data=tmp)
+summary(lmres)
+ggplot(tmp,aes(x=dsc,y=prop)) +
+  geom_point()
 
 # test associations for healthy donors only
 library(cowplot)
+
 test <- tmp[tmp$Status=='Healthy',]
+lmres <- lm(prop~Age,data=test)
+line_range <- seq(min(test$Age),max(test$Age),.001)
+line_dat <- c(line_range*lmres$coefficients[[2]] + lmres$coefficients[[1]])
+line_df <- cbind.data.frame(line_range,line_dat)
+colnames(line_df) <- c('myx','myy')
 h_prop <- ggplot(test,aes(x=Age,y=prop)) +
-  geom_point(color='#F8766D') +
+  geom_point(alpha = 0.75,pch=19,size=2,color='#F8766D') +
+  geom_line(data=line_df,aes(x=myx,y=myy)) +
   xlab('Age') +
   ylab('T4_1 Proportion') +
   ggtitle('Healthy Donors') +
   theme_bw() +
-  theme(plot.title = element_text(hjust = 0.5))
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=14))
 
+lmres <- lm(Age~dsc,data=test)
+line_range <- seq(min(test$dsc),max(test$dsc),.001)
+line_dat <- c(line_range*lmres$coefficients[[2]] + lmres$coefficients[[1]])
+line_df <- cbind.data.frame(line_range,line_dat)
+colnames(line_df) <- c('myx','myy')
 h_fact <- ggplot(test,aes(x=dsc,y=Age)) +
-  geom_point(color='#F8766D') +
+  geom_point(alpha = 0.75,pch=19,size=2,color='#F8766D') +
+  geom_line(data=line_df,aes(x=myx,y=myy)) +
   xlab('Factor 4 Donor Score') +
   ylab('Age') +
   ggtitle('Healthy Donors') +
   theme_bw() +
-  theme(plot.title = element_text(hjust = 0.5))
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=14))
 
 lm_h_prop <- lm(Age~prop,data=test)
 summary(lm_h_prop)
@@ -1184,21 +1209,37 @@ summary(lm_h_fact)
 
 # test associations for SLE donors only
 test <- tmp[tmp$Status=='Managed',]
+lmres <- lm(prop~Age,data=test)
+line_range <- seq(min(test$Age),max(test$Age),.001)
+line_dat <- c(line_range*lmres$coefficients[[2]] + lmres$coefficients[[1]])
+line_df <- cbind.data.frame(line_range,line_dat)
+colnames(line_df) <- c('myx','myy')
 s_prop <- ggplot(test,aes(x=Age,y=prop)) +
-  geom_point(color='#00BFC4') +
+  geom_point(alpha = 0.75,pch=19,size=2,color='#00BFC4') +
+  geom_line(data=line_df,aes(x=myx,y=myy)) +
   xlab('Age') +
   ylab('T4_1 Proportion') +
-  ggtitle('Managed Donors') +
+  ggtitle('SLE Patients') +
   theme_bw() +
-  theme(plot.title = element_text(hjust = 0.5))
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=14))
 
+lmres <- lm(Age~dsc,data=test)
+line_range <- seq(min(test$dsc),max(test$dsc),.001)
+line_dat <- c(line_range*lmres$coefficients[[2]] + lmres$coefficients[[1]])
+line_df <- cbind.data.frame(line_range,line_dat)
+colnames(line_df) <- c('myx','myy')
 s_fact <- ggplot(test,aes(x=dsc,y=Age)) +
-  geom_point(color='#00BFC4') +
+  geom_point(alpha = 0.75,pch=19,size=2,color='#00BFC4') +
+  geom_line(data=line_df,aes(x=myx,y=myy)) +
   xlab('Factor 4 Donor Score') +
   ylab('Age') +
-  ggtitle('Managed Donors') +
+  ggtitle('SLE Patients') +
   theme_bw() +
-  theme(plot.title = element_text(hjust = 0.5))
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=14))
 
 lm_s_prop <- lm(Age~prop,data=test)
 summary(lm_s_prop)
@@ -1349,15 +1390,177 @@ for (ct in pbmc_container$experiment_params$ctypes_use) {
 
 
 
+### for the sle donors with low f4 scores vs 0 f4 scores, what else do they have high of
+# like do the low f4 donors not have any of the other ifn processes?
+
+meta <- pbmc_container$scMinimal_full$metadata[,c('donors','Status')]
+meta <- unique(meta)
+rownames(meta) <- meta$donors
+meta$donors <- NULL
+
+
+f1_data <- get_one_factor(pbmc_container, factor_select=4)
+f1_dscores <- f1_data[[1]]
+f1_loadings <- f1_data[[2]]
+
+tmp <- cbind.data.frame(f1_dscores,meta[rownames(f1_dscores),])
+colnames(tmp) <- c('dsc','Status')
+tmp <- tmp[tmp$Status=='Managed',]
+
+d_keep <- rownames(tmp)[tmp$dsc>.05]
+
+
+f1_data <- get_one_factor(pbmc_container, factor_select=2)
+f1_dscores <- f1_data[[1]]
+f1_dscores[d_keep,]
+
+
+d_keep1 <- rownames(tmp)[tmp$dsc<.025]
+d_keep2 <- rownames(tmp)[tmp$dsc>-.025]
+d_keep <- intersect(d_keep1,d_keep2)
+
+
+## seeing if activated B cells are linked to LN
+container <- pbmc_container
+ctype <- 'B'
+res <- .8
+resolution_name <- paste0('res:',as.character(res))
+subclusts <- container$subclusters[[ctype]][[resolution_name]]
+
+# append large cell type name to subclusters
+subclusts <- sapply(subclusts,function(x){paste0(ctype,'_',x)})
+
+# limit cells in subclusts to those that we actually have scores for
+donor_scores <- container$tucker_results[[1]]
+donor_vec <- container$scMinimal_full$metadata[names(subclusts),'donors']
+subclusts <- subclusts[donor_vec %in% rownames(donor_scores)]
+
+# make subtype association plot
+subclusts_num <- sapply(subclusts,function(x){as.numeric(strsplit(x,split="_")[[1]][[2]])})
+scMinimal <- container$scMinimal_ctype[[ctype]]
+sub_meta_tmp <- scMinimal$metadata[names(subclusts),]
+
+# get donor proportions of subclusters
+donor_props <- compute_donor_props(subclusts_num,sub_meta_tmp)
+trim_names <- sapply(rownames(donor_props), function(x) {
+  strsplit(x,split='_')[[1]][[1]]
+})
+names(trim_names) <- c()
+rownames(donor_props) <- trim_names
+
+tmp <- cbind.data.frame(clin_vars[rownames(donor_props),'crflupusneph'],donor_props[,1,drop=FALSE])
+colnames(tmp) <- c('cvar','prop')
+tmp <- tmp[!is.na(tmp$cvar),]
+tmp$cvar <- as.factor(tmp$cvar)
+ggplot(tmp,aes(x=as.factor(cvar),y=prop)) +
+  geom_point()
+lmres <- lm(prop~cvar,data=tmp)
+summary(lmres)
+breg <- betareg::betareg(prop~cvar, data = tmp)
+tmp <- summary(breg)
+reg_stat <- tmp$coefficients$mean['dscore','Pr(>|z|)']
+
+## see if of those with high scores, the ones with LN have the higher B levels
+dsc <- container$tucker_results[[1]]
+trim_names <- sapply(rownames(dsc), function(x) {
+  strsplit(x,split='_')[[1]][[1]]
+})
+names(trim_names) <- c()
+rownames(dsc) <- trim_names
+tmp <- cbind.data.frame(clin_vars[rownames(donor_props),'crflupusneph'],
+                        clin_vars[rownames(donor_props),'acrantidsdna'],
+                        donor_props[,4,drop=FALSE],
+                        dsc[rownames(donor_props),2,drop=FALSE])
+colnames(tmp) <- c('ln','ds','prop','dscore')
+tmp <- tmp[tmp$dscore>.05,]
+tmp <- tmp[!is.na(tmp$ln),]
+tmp <- tmp[!is.na(tmp$ds),]
+tmp$ln <- as.factor(tmp$ln)
+tmp$ds <- as.factor(tmp$ds)
+
+tmp <- tmp[tmp$ds==1,]
+
+ggplot(tmp,aes(x=ln,y=prop)) +
+  geom_point()
+lmres <- lm(prop~ln,data=tmp)
+
+
+
+## checking if loadings directions are concordant with lm directions
+my_factor=7
+myf <- get_one_factor(pbmc_container,factor_select=my_factor)
+dsc <- myf[[1]]
+lds <- myf[[2]]
+
+sig_vectors <- get_significance_vectors(pbmc_container,
+                                        factor_select=my_factor, colnames(lds))
+# convert list to df
+sig_df <- t(as.data.frame(do.call(rbind, sig_vectors)))
+
+# limit to just the genes in tmp_casted_num
+sig_df <- sig_df[rownames(lds),colnames(lds)]
+
+# reduce tmp_casted_num to genes significant in at least one cell type
+lds <- lds[rowSums(sig_df<.05) > 0,]
+
+lds[sig_df[rownames(lds),colnames(lds)] > .05] <- 0
+head(lds)
+
+tmp <- lds[,'NK']
+tmp2 <- abs(tmp)
+tmp3 <- tmp2[tmp2!=0]
+min_gene <- names(tmp3[which(tmp3==min(tmp3))])
+min_gene
+min_gene_signed <- tmp[min_gene]
+min_gene_signed
+sig_df[min_gene,'NK']
+
+# or try nth biggest loading
+tmp <- lds[,'T4']
+min_gene_signed <- tmp[order(tmp,decreasing=T)][1]
+min_gene_signed
+min_gene <- names(min_gene_signed)
+
+# plotting IFN response gene expression against f1
+d_exp <- pbmc_container[["scMinimal_ctype"]][['T4']][["pseudobulk"]][,min_gene]
+dsc <- pbmc_container$tucker_results[[1]][,my_factor]
+tmp <- cbind.data.frame(dsc[names(d_exp)],d_exp)
+colnames(tmp) <- c('dscore','expres')
+
+# add regression line
+lmres <- lm(expres~dscore,data=tmp)
+line_range <- seq(min(tmp$dscore),max(tmp$dscore),.001)
+line_dat <- c(line_range*lmres$coefficients[[2]] + lmres$coefficients[[1]])
+line_df <- cbind.data.frame(line_range,line_dat)
+colnames(line_df) <- c('myx','myy')
+
+ggplot(tmp,aes(x=dscore,y=expres)) +
+  geom_point(alpha = 0.3,pch=19,size=2) +
+  geom_line(data=line_df,aes(x=myx,y=myy)) +
+  ylab('IFI6 expression (CD4+ T)') +
+  xlab('Factor 1 donor scores') +
+  theme_bw()
+dev.off()
+
+
+pbmc_container <- plot_donor_sig_genes(pbmc_container, factor_select=5,
+                                       top_n_per_ctype=20, show_donor_labels=F)
+pbmc_container[["plots"]][["donor_sig_genes"]][["5"]]
 
 
 
 
 
 
+# seeing if sparse pca helps with opposite sign problem
+pbmc_container <- plot_loadings_annot(pbmc_container, factor_select=3, use_sig_only=F, nonsig_to_zero=F, annot='none',
+                                      pathways=NULL, sim_de_donor_group=NULL, sig_thresh=0.05, display_genes=F)
 
-
-
+# what if I do sparse pca on regular loadings then do ica...
+test <- rspca(t(ldngs),ranks[1],center=FALSE,alpha=.0001)
+test2 <- t(ldngs) %*% test$transform
+test2 <- t(ldngs) %*% test$loadings # this is just the sparse rotation matrix
+all.equal(test$scores,test2)
 
 
 

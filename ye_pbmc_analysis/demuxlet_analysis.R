@@ -232,8 +232,8 @@ for (i in 1:nrow(tmp_casted_num)) {
 cor(lds_both,fc_both,method = 'spearman')
 tmp <- as.data.frame(cbind(lds_both,fc_both))
 colnames(tmp) <- c('loading','log2FC')
-pdf(file = "/home/jmitchel/figures/for_paper/demuxlet_loading_vs_log2FC_v2.pdf", useDingbats = FALSE,
-    width = 4, height = 1.5)
+# pdf(file = "/home/jmitchel/figures/for_paper/demuxlet_loading_vs_log2FC_v2.pdf", useDingbats = FALSE,
+#     width = 4, height = 1.5)
 ggplot(tmp,aes(x=log2FC,y=loading)) +
   geom_point(alpha = 0.175) +
   theme_bw()
@@ -272,6 +272,8 @@ colnames(tmp) <- c('scITD_padj','DE_padj')
 rownames(tmp) <- gene_ct
 tmp$scITD_padj[tmp$scITD_padj<.0001] <- .0001
 tmp$DE_padj[tmp$DE_padj<.000000000000001] <- .000000000000001
+# tmp$DE_padj[tmp$DE_padj<.0000000000000000000000000000000000000000000000000001] <- .0000000000000000000000000000000000000000000000000001
+
 
 # pdf(file = "/home/jmitchel/figures/for_paper/demuxlet_jackstraw_vs_DEpval_v2.pdf", useDingbats = FALSE,
 #     width = 4.5, height = 3.5)
@@ -296,8 +298,25 @@ sum(mask$DE_padj>(-log10(.05)) & mask$scITD_padj<(-log10(.05)))
 sum(mask$DE_padj>(-log10(.05)) & mask$scITD_padj>(-log10(.05)))
 
 
+#### trying with no jackstraw gene significance 
+# get associations as gene.ct.factor
+pvals <- get_real_fstats(pbmc_container,ncores=4) # using pvals for this fn
+padj <- p.adjust(pvals,method='fdr')
+names(padj) <- sapply(names(padj),function(x) {
+  return(substr(x,1,nchar(x)-6))
+})
 
+pbmc_container[["gene_score_associations"]] <- padj
+# now rerun plot above
 
-
-
+pdf(file = "/home/jmitchel/figures/for_paper/demuxlet_no_jackstraw_vs_DEpval_v2.pdf", useDingbats = FALSE,
+    width = 4.5, height = 3.5)
+ggplot(tmp,aes(x=-log(DE_padj,base=10),y=-log(scITD_padj,base=10))) +
+  geom_point(alpha = 0.3) +
+  theme_bw() +
+  geom_hline(yintercept=-log10(.05), linetype="dashed", color = "red") +
+  geom_vline(xintercept=-log10(.05), linetype="dashed", color = "red") +
+  xlab('DE -log10(adj p-value)') +
+  ylab('scITD Jackstraw\n-log10(adj p-value)')
+dev.off()
 

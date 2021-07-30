@@ -352,13 +352,15 @@ pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(2,4,2),
 pbmc_container <- plot_donor_matrix(pbmc_container,
                                     show_donor_ids = TRUE)
 
-pdf(file = "/home/jmitchel/figures/for_paper/sim_v3_dscores.pdf", useDingbats = FALSE,
-    width = 6, height = 7)
+# pdf(file = "/home/jmitchel/figures/for_paper/sim_v3_dscores.pdf", useDingbats = FALSE,
+#     width = 6, height = 7)
 pbmc_container$plots$donor_matrix
 dev.off()
 
 pbmc_container <- run_jackstraw(pbmc_container, ranks=c(2,4,2), n_fibers=100, n_iter=1000,
                                 tucker_type='regular', rotation_type='ica')
+# or use the lm method
+pbmc_container <- get_lm_pvals(pbmc_container)
 
 
 ## making loadings plots when limiting to just most variable genes so it's easier to see them but will
@@ -394,8 +396,10 @@ ct2_de <- de1_ct2
 ct2_de <- ct2_de[rownames(sig_df),]
 de_true1 <- c(ct1_de$DEFacGroup2!=1,ct2_de$DEFacGroup2!=1)
 
-pdf(file = "/home/jmitchel/figures/for_paper/sim_v3_auc_f1.pdf", useDingbats = FALSE,
-    width = 4, height = 4)
+library(pROC)
+
+# pdf(file = "/home/jmitchel/figures/for_paper/sim_v3_auc_f1.pdf", useDingbats = FALSE,
+#     width = 4, height = 4)
 pROC_obj <- roc(de_true1,pred1,
                 smoothed = TRUE,
                 ci=FALSE,
@@ -416,8 +420,8 @@ ct2_de <- de2_ct2
 ct2_de <- ct2_de[rownames(sig_df),]
 de_true2 <- c(ct1_de$DEFacGroup2!=1,ct2_de$DEFacGroup2!=1)
 
-pdf(file = "/home/jmitchel/figures/for_paper/sim_v3_auc_f2.pdf", useDingbats = FALSE,
-    width = 4, height = 4)
+# pdf(file = "/home/jmitchel/figures/for_paper/sim_v3_auc_f2.pdf", useDingbats = FALSE,
+#     width = 4, height = 4)
 pROC_obj <- roc(de_true2,pred2,
                 smoothed = TRUE,
                 ci=FALSE,
@@ -605,5 +609,44 @@ dev.off()
 # ## save results so far
 # save.image(file='/home/jmitchel/data/sim_data/sim_v3.RData')
 load(file='/home/jmitchel/data/sim_data/sim_v3.RData')
+
+
+
+
+#### comparing use of jackstraw to no jackstraw in controlling FDR
+library(pROC)
+# should see around 5% of p<0.05 as incorrect with jackstraw
+# should see higher than 5% of p<0.05 as incorrect without jackstraw
+
+# do factor 1 first
+sig_vectors <- get_significance_vectors(pbmc_container,
+                                        factor_select=ndx_max, c('ct1','ct2'))
+# convert list to df
+sig_df <- t(as.data.frame(do.call(rbind, sig_vectors)))
+pred1 <- c(sig_df)
+
+ct1_de <- de1_ct1
+ct1_de <- ct1_de[rownames(sig_df),]
+ct2_de <- de1_ct2
+ct2_de <- ct2_de[rownames(sig_df),]
+de_true1 <- c(ct1_de$DEFacGroup2!=1,ct2_de$DEFacGroup2!=1)
+
+ndx_pos <- which(pred1<0.05)
+rv <- de_true1[ndx_pos]
+tp <- sum(rv)
+fp <- sum(!rv)
+fp/length(rv) # 2% of padj<0.05 were false
+
+# get associations as gene.ct.factor
+pvals <- get_real_fstats(pbmc_container,ncores=4)
+padj <- p.adjust(pvals,method='fdr')
+names(padj) <- sapply(names(padj),function(x) {
+  return(substr(x,1,nchar(x)-6))
+})
+
+pbmc_container[["gene_score_associations"]] <- padj
+# recalculate the above...
+
+
 
 

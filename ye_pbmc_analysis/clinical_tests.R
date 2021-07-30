@@ -2,6 +2,12 @@
 
 library("readxl")
 
+# get clinical data for eth info
+clin_vars <- as.data.frame(read_excel('/home/jmitchel/data/lupus_data/SLE_clinical_data.xlsx'))
+rownames(clin_vars) <- clin_vars$subjectid
+eth = clin_vars[,'race',drop=FALSE]
+eth = clin_vars[,'raceeth',drop=FALSE]
+
 # load data of categorical variables
 clin_vars <- read_excel('/home/jmitchel/data/lupus_data/SLE_clinical_data_categorical.xlsx')
 clin_vars <- as.data.frame(clin_vars)
@@ -39,6 +45,7 @@ old_id_both <- old_names[d_both]
 # limit both dataframes to just the intersection of donors and in the same order
 dsc <- dsc[d_both,]
 clin_vars <- clin_vars[d_both,]
+eth <- eth[d_both,,drop=FALSE]
 
 #### apply other checks to clin vars before testing!!
 ndx_rem <- c()
@@ -54,7 +61,7 @@ clin_vars <- clin_vars[,-ndx_rem]
 ####
 
 
-## do enrichment tests
+# # do enrichment tests
 # library(fgsea)
 # mypaths <- list()
 # for (j in 1:ncol(clin_vars)) {
@@ -62,7 +69,7 @@ clin_vars <- clin_vars[,-ndx_rem]
 #   d_in_set <- rownames(clin_vars)[clin_vars[d_keep,j]!=0]
 #   mypaths[[colnames(clin_vars)[j]]] <- d_in_set
 # }
-# myranks <- dsc[,3]
+# myranks <- dsc[,12]
 # 
 # # tmp_names <- names(mypaths)[c(1:20)]
 # # mypaths <- mypaths[1:50]
@@ -70,7 +77,7 @@ clin_vars <- clin_vars[,-ndx_rem]
 # 
 # fgseaRes <- fgseaSimple(pathways = mypaths,
 #                   stats    = myranks,
-#                   minSize  = 5,
+#                   minSize  = 3,
 #                   maxSize  = 80,
 #                   nperm=10000)
 # fgseaRes <- fgseaRes[order(fgseaRes$padj,decreasing=FALSE),]
@@ -85,19 +92,24 @@ c_tested <- c()
 for (j in 1:ncol(clin_vars)) {
   print(j)
   # loop through factors
-  # for (f in 1:ncol(dsc)) {
-  for (f in 1:4) {
+  for (f in 1:ncol(dsc)) {
+  # for (f in 1:4) {
     # get donors in clin var that don't have an NA value
     d_keep <- rownames(clin_vars)[!is.na(clin_vars[,j])]
 
     tmp <- as.data.frame(cbind(dsc[d_keep,f], clin_vars[d_keep,j]))
     colnames(tmp) <- c('dscore','cvar')
-
+    
+    # # to try with eth covar
+    # tmp <- as.data.frame(cbind(dsc[d_keep,f], clin_vars[d_keep,j], eth[d_keep,1]))
+    # colnames(tmp) <- c('dscore','cvar','eth')
+    # tmp$eth <- as.factor(tmp$eth)
+    
     # force cvar to be factor
     tmp$cvar <- as.factor(tmp$cvar)
 
     # if smallest level has less thatn n donors skip this one
-    if (min(table(tmp$cvar)) < 10) {
+    if (min(table(tmp$cvar)) < 15) {
       next
     }
 
@@ -115,6 +127,8 @@ for (j in 1:ncol(clin_vars)) {
 
 
     # trying with logistic regression model
+    # fmod <- glm(cvar~dscore+eth, data=tmp, family = "binomial") ##"full" mod
+    # nmod <- glm(cvar~1+eth, data=tmp, family = 'binomial') ##"null" mod
     fmod <- glm(cvar~dscore, data=tmp, family = "binomial") ##"full" mod
     nmod <- glm(cvar~1, data=tmp, family = 'binomial') ##"null" mod
     a_res <- anova(nmod, fmod, test = 'Chisq')
@@ -190,14 +204,46 @@ dev.off()
 
 
 
+# plotting dscores against ethnicity
+myfactor=2
+# tmp <- as.data.frame(cbind(dsc[d_keep,6], eth[d_keep,1]))
+tmp <- as.data.frame(cbind(dsc[d_keep,myfactor], eth[d_keep,1]))
+colnames(tmp) <- c('dscore','eth')
+tmp$eth <- as.factor(tmp$eth)
+
+fmod <- glm(eth~dscore, data=tmp, family = "binomial") ##"full" mod
+nmod <- glm(eth~1, data=tmp, family = 'binomial') ##"null" mod
+a_res <- anova(nmod, fmod, test = 'Chisq')
+pval <- a_res$`Pr(>Chi)`[2]
+pval
+
+ggplot(tmp,aes(x=eth,y=dscore)) +
+  geom_violin() +
+  geom_dotplot(binaxis='y', stackdir='center', dotsize=.75, binwidth = .01) +
+  ylab('Factor 1 Donor Score') +
+  xlab('') +
+  coord_flip() +
+  theme_bw()
 
 
 
+d_keep <- rownames(clin_vars)[!is.na(clin_vars[,"crfmucuulcers"])]
+tmp <- as.data.frame(cbind(dsc[d_keep,5], clin_vars[d_keep,"crfmucuulcers"]))
+colnames(tmp) <- c('dscore','cvar')
+
+d_keep <- rownames(clin_vars)[!is.na(clin_vars[,"crfothrashsle"])]
+tmp <- as.data.frame(cbind(dsc[d_keep,5], clin_vars[d_keep,"crfothrashsle"]))
+colnames(tmp) <- c('dscore','cvar')
+
+d_keep <- rownames(clin_vars)[!is.na(clin_vars[,"crflymphadeno"])]
+tmp <- as.data.frame(cbind(dsc[d_keep,6], clin_vars[d_keep,"crflymphadeno"]))
+colnames(tmp) <- c('dscore','cvar')
 
 ### plot lupusneph result
 d_keep <- rownames(clin_vars)[!is.na(clin_vars[,"crflupusneph"])]
 tmp <- as.data.frame(cbind(dsc[d_keep,2], clin_vars[d_keep,"crflupusneph"]))
 colnames(tmp) <- c('dscore','cvar')
+
 
 # force cvar to be factor
 tmp$cvar <- as.factor(tmp$cvar)
@@ -211,8 +257,8 @@ tmp$cvar_word <- sapply(tmp$cvar,function(x){
 })
 tmp$cvar_word <- as.factor(tmp$cvar_word)
 
-pdf(file = "/home/jmitchel/figures/for_paper/LN_factor2.pdf", useDingbats = FALSE,
-    width = 4.5, height = 3.5)
+# pdf(file = "/home/jmitchel/figures/for_paper/LN_factor2.pdf", useDingbats = FALSE,
+#     width = 4.5, height = 3.5)
 ggplot(tmp,aes(x=cvar_word,y=dscore)) +
   geom_violin() +
   geom_dotplot(binaxis='y', stackdir='center', dotsize=.75, binwidth = .01) +
@@ -307,6 +353,7 @@ pval <- a_res$`Pr(>Chi)`[2]
 
 
 # load data of ordinal variables
+library(MASS)
 clin_vars <- read_excel('/home/jmitchel/data/lupus_data/SLE_clinical_data_ordinal.xlsx')
 clin_vars <- as.data.frame(clin_vars)
 rownames(clin_vars) <- clin_vars$subjectid
@@ -332,22 +379,30 @@ clin_vars <- clin_vars[d_both,]
 #     # get donors in clin var that don't have an NA value
 #     d_keep <- rownames(clin_vars)[!is.na(clin_vars[,j])]
 # 
-#     tmp <- as.data.frame(cbind(dsc[d_keep,f], clin_vars[d_keep,j]))
-#     colnames(tmp) <- c('dscore','cvar')
-# 
-#     print(unique(tmp$cvar))
+#     # tmp <- as.data.frame(cbind(dsc[d_keep,f], clin_vars[d_keep,j]))
+#     # colnames(tmp) <- c('dscore','cvar')
+#     
+#     # to try with eth covar
+#     tmp <- as.data.frame(cbind(dsc[d_keep,f], clin_vars[d_keep,j], eth[d_keep,1]))
+#     colnames(tmp) <- c('dscore','cvar','eth')
+#     tmp$eth <- as.factor(tmp$eth)
 # 
 #     # compute linear model
 #     # force cvar to be numeric
 #     tmp$cvar <- as.numeric(tmp$cvar)
 # 
-#     lmres <- summary(lm(dscore ~ cvar, data=tmp))
-#     pval <- stats::pf(lmres$fstatistic[1],lmres$fstatistic[2],lmres$fstatistic[3],lower.tail=FALSE)
+#     # lmres <- summary(lm(dscore ~ cvar, data=tmp))
+#     # pval <- stats::pf(lmres$fstatistic[1],lmres$fstatistic[2],lmres$fstatistic[3],lower.tail=FALSE)
 # 
+#     fmod <- lm(cvar~dscore+eth, data=tmp) ##"full" mod
+#     nmod <- lm(cvar~1+eth, data=tmp) ##"null" mod
+#     a_res <- anova(nmod, fmod, test = 'Chisq')
+#     pval <- a_res$`Pr(>Chi)`[2]
+#     
 #     # # using ordinal logistic regression
 #     # tmp$cvar <- as.factor(tmp$cvar)
 #     # m <- polr(cvar ~ dscore, data = tmp, Hess=TRUE, method='probit')
-#     # 
+#     #
 #     # ## view a summary of the model
 #     # ctable <- coef(summary(m))
 #     # ## calculate and store p values
@@ -372,7 +427,6 @@ for (j in 1:ncol(clin_vars)) {
   tmp <- as.data.frame(cbind(dsc[d_keep,], clin_vars[d_keep,j]))
   colnames(tmp)[1:ncol(dsc)] <- sapply(1:ncol(dsc),function(x){paste0('Factor',x)})
   colnames(tmp)[ncol(dsc)+1] <- 'cvar'
-  
 
   # using ordinal logistic regression
   tmp$cvar <- as.factor(tmp$cvar)
@@ -399,13 +453,22 @@ d_keep <- rownames(clin_vars)[!is.na(clin_vars[,"sliccscore"])]
 tmp <- as.data.frame(cbind(dsc[d_keep,1], clin_vars[d_keep,"sliccscore"]))
 colnames(tmp) <- c('dscore','cvar')
 
-# force cvar to be factor
-tmp$cvar <- as.factor(tmp$cvar)
+# # force cvar to be factor
+# tmp$cvar <- as.factor(tmp$cvar)
+tmp$cvar <- as.numeric(tmp$cvar)
+
+
+lmres <- lm(cvar~dscore,data=tmp)
+line_range <- seq(min(tmp$dscore),max(tmp$dscore),.001)
+line_dat <- c(line_range*lmres$coefficients[[2]] + lmres$coefficients[[1]])
+line_df <- cbind.data.frame(line_range,line_dat)
+colnames(line_df) <- c('myx','myy')
 
 pdf(file = "/home/jmitchel/figures/for_paper/sle_only_f1_slicc.pdf", useDingbats = FALSE,
     width = 4.5, height = 3.5)
 ggplot(tmp,aes(x=dscore,y=cvar)) +
-  geom_point() +
+  geom_point(alpha = 0.3,pch=19,size=3) +
+  geom_line(data=line_df,aes(x=myx,y=myy)) +
   xlab('Factor 1 Donor Score') +
   ylab('SLICC Score') +
   theme_classic()
@@ -415,13 +478,22 @@ d_keep <- rownames(clin_vars)[!is.na(clin_vars[,"sledaiscore"])]
 tmp <- as.data.frame(cbind(dsc[d_keep,1], clin_vars[d_keep,"sledaiscore"]))
 colnames(tmp) <- c('dscore','cvar')
 
-# force cvar to be factor
-tmp$cvar <- as.factor(tmp$cvar)
+# # force cvar to be factor
+# tmp$cvar <- as.factor(tmp$cvar)
+tmp$cvar <- as.numeric(tmp$cvar)
+
+# adding reg line
+lmres <- lm(cvar~dscore,data=tmp)
+line_range <- seq(min(tmp$dscore),max(tmp$dscore),.001)
+line_dat <- c(line_range*lmres$coefficients[[2]] + lmres$coefficients[[1]])
+line_df <- cbind.data.frame(line_range,line_dat)
+colnames(line_df) <- c('myx','myy')
 
 pdf(file = "/home/jmitchel/figures/for_paper/sle_only_f1_sledai.pdf", useDingbats = FALSE,
     width = 4.5, height = 3.5)
 ggplot(tmp,aes(x=dscore,y=cvar)) +
-  geom_point() +
+  geom_point(alpha = 0.3,pch=19,size=3) +
+  geom_line(data=line_df,aes(x=myx,y=myy)) +
   xlab('Factor 1 Donor Score') +
   ylab('SLEDAI Score') +
   theme_classic()
@@ -432,19 +504,30 @@ d_keep <- rownames(clin_vars)[!is.na(clin_vars[,"sliccscore"])]
 tmp <- as.data.frame(cbind(dsc[d_keep,7], clin_vars[d_keep,"sliccscore"]))
 colnames(tmp) <- c('dscore','cvar')
 
-# force cvar to be factor
-tmp$cvar <- as.factor(tmp$cvar)
+# # force cvar to be factor
+# tmp$cvar <- as.factor(tmp$cvar)
+
+lmres <- lm(cvar~dscore,data=tmp)
+line_range <- seq(min(tmp$dscore),max(tmp$dscore),.001)
+line_dat <- c(line_range*lmres$coefficients[[2]] + lmres$coefficients[[1]])
+line_df <- cbind.data.frame(line_range,line_dat)
+colnames(line_df) <- c('myx','myy')
 
 pdf(file = "/home/jmitchel/figures/for_paper/sliccscore_factor7.pdf", useDingbats = FALSE,
     width = 4.5, height = 3.5)
 pdf(file = "/home/jmitchel/figures/for_paper/sliccscore_factor7.pdf", useDingbats = FALSE,
     width = 6, height = 3.5)
 ggplot(tmp,aes(x=dscore,y=cvar)) +
-  geom_point() +
+  geom_point(alpha = 0.3,pch=19,size=3) +
+  geom_line(data=line_df,aes(x=myx,y=myy)) +
   xlab('Factor 7 Donor Score') +
   ylab('SLICC Score') +
-  theme_classic()
+  theme_classic() +
+  theme(axis.text=element_text(size=10),
+        axis.title=element_text(size=14))
 dev.off()
+
+
 
 
 d_keep <- rownames(clin_vars)[!is.na(clin_vars[,"sledaiscore"])]
@@ -736,14 +819,17 @@ sum(all_scores>myscore)/1000
 
 ## trying a sliding window approach
 # testing co-occurrance of LN and dsdna with factor 2
+# old_dsc <- dsc
 dsc <- old_dsc
 tmp <- as.data.frame(cbind(dsc[,2],clin_vars[,'crflupusneph'],clin_vars[,'acrantidsdna']))
+# tmp <- as.data.frame(cbind(dsc[,4],clin_vars[,'crflupusneph'],clin_vars[,'acrantismith']))
 tmp <- tmp[order(tmp[,1],decreasing=TRUE),]
 colnames(tmp) <-  c('dscore','ln','dsdna')
 
 # remove rows that don't have dsdna==1
 tmp <- tmp[tmp$dsdna==1,]
-window_size <- 13
+# window_size <- 21 #size I originally used
+window_size <- 17
 stored_counts <- c()
 for (i in 1:(nrow(tmp)-window_size+1)) {
   tests <- tmp[i:(i+window_size-1),'ln']
@@ -755,15 +841,20 @@ plot(dscores,stored_counts)
 lmres <- lm(stored_counts~dscores)
 lmres <- summary(lmres)
 myfstat <- lmres$fstatistic[[1]]
+myfstat <- cor(stored_counts,dscores,method='spearman')
+myfstat <- cor(stored_counts,dscores,method='pearson')
+myfstat
 
 plot_df <- cbind.data.frame(stored_counts,dscores)
 pdf(file = "/home/jmitchel/figures/for_paper/LN_antidsDNA_link.pdf", useDingbats = FALSE,
-    width = 6, height = 4)
+    width = 4, height = 3.25)
 ggplot(plot_df,aes(x=dscores,y=stored_counts)) +
-  geom_point() +
+  geom_point(alpha = 0.3,pch=19,size=2) +
   xlab('Factor 2 Donor Score (window center)') +
   ylab('Number of Joint Occurrences\nof LN + anti_dsDNA') +
-  theme_classic()
+  theme_classic() +
+  theme(axis.text=element_text(size=10),
+        axis.title=element_text(size=14))
 dev.off()
 
 
@@ -777,6 +868,8 @@ for (testndx in 1:1000) {
   
   # testing co-occurrance of LN and dsdna with factor 2
   tmp <- as.data.frame(cbind(dsc[,2],clin_vars[,'crflupusneph'],clin_vars[,'acrantidsdna']))
+  # tmp <- as.data.frame(cbind(dsc[,4],clin_vars[,'crflupusneph'],clin_vars[,'acrantidsdna']))
+  # tmp <- as.data.frame(cbind(dsc[,4],clin_vars[,'crflupusneph'],clin_vars[,'acrantismith']))
   tmp <- tmp[order(tmp[,1],decreasing=TRUE),]
   colnames(tmp) <-  c('dscore','ln','dsdna')
   
@@ -789,11 +882,16 @@ for (testndx in 1:1000) {
   dscores <- tmp$dscore[(floor(window_size/2)+1):(nrow(tmp)-floor(window_size/2))]
   lmres <- lm(stored_counts~dscores)
   lmres <- summary(lmres)
-  fstat <- lmres$fstatistic[[1]]
+  # fstat <- lmres$fstatistic[[1]]
+  fstat <- cor(stored_counts,dscores,method='spearman')
   all_scores <- c(all_scores,fstat)
 }
 
 sum(all_scores>myfstat)/1000
+sum(all_scores<myfstat)/1000
+
+sum(all_scores>myfstat)/10000
+sum(all_scores<myfstat)/10000
 
 
 
@@ -979,7 +1077,7 @@ ggplot(tmp,aes(x=cvar,y=dscore)) +
 # testing factor 5 against prednisone level
 tmp <- cbind.data.frame(dsc[,5],pred_dose[d_both,1])
 colnames(tmp) <- c('dscore','cvar')
-head(tmp)
+# head(tmp)
 ggplot(tmp,aes(x=dscore,y=cvar)) +
   geom_point()
 # looks okay but might need to adjust for weight...
@@ -1021,11 +1119,13 @@ colnames(line_df) <- c('myx','myy')
 pdf(file = "/home/jmitchel/figures/for_paper/prednisone_dose_reg.pdf", useDingbats = FALSE,
     width = 6, height = 4)
 ggplot(tmp,aes(x=dscore,y=cvar)) +
-  geom_point() +
+  geom_point(alpha = 0.3,pch=19,size=3) +
   geom_line(data=line_df,aes(x=myx,y=myy)) +
   xlab('Factor 5 Donor Score') +
   ylab('Prednisone Dose') +
-  theme_classic()
+  theme_classic() +
+  theme(axis.text=element_text(size=10),
+      axis.title=element_text(size=14))
 dev.off()
 
 # make plot for binary classification
@@ -1065,17 +1165,18 @@ dev.off()
 
 
 #crferosivearth sliccdefarthritis
-tmp <- cbind.data.frame(dsc[,3],clin_vars[,'crferosivearth'])
+tmp <- cbind.data.frame(dsc[,3],clin_vars[,'sliccdefarthritis'])
 colnames(tmp) <- c('dscore','cvar')
 tmp$cvar_word <- sapply(tmp$cvar,function(x){
   if (x==1) {
-    return('crferosivearth')
+    return('deforming arthritis')
   } else {
-    return('no crferosivearth')
+    return('no deforming arthritis')
   }
 })
 tmp$cvar_word <- as.factor(tmp$cvar_word)
-
+pdf(file = "/home/jmitchel/figures/for_paper/SLE_only_arthritis.pdf", useDingbats = FALSE,
+    width = 4.5, height = 3)
 ggplot(tmp,aes(x=cvar_word,y=dscore)) +
   geom_violin() +
   geom_dotplot(binaxis='y', stackdir='center', dotsize=.75, binwidth = .01) +
@@ -1084,4 +1185,113 @@ ggplot(tmp,aes(x=cvar_word,y=dscore)) +
   coord_flip() +
   theme_bw()
 dev.off()
+
+tmp3 <- tmp[tmp$cvar==1,]
+
+
+
+
+
+
+
+
+d_keep <- rownames(clin_vars)[!is.na(clin_vars[,"sliccscore"])]
+tmp <- as.data.frame(cbind(dsc[d_keep,3], clin_vars[d_keep,"sliccscore"]))
+colnames(tmp) <- c('dscore','cvar')
+
+# force cvar to be factor
+tmp$cvar <- as.factor(tmp$cvar)
+pdf(file = "/home/jmitchel/figures/for_paper/SLE_only_f3_sliccscore.pdf", useDingbats = FALSE,
+    width = 4.5, height = 3)
+ggplot(tmp,aes(x=dscore,y=cvar)) +
+  geom_point() +
+  xlab('Factor 3 Donor Score') +
+  ylab('SLICC Score') +
+  theme_classic()
+dev.off()
+
+
+tmp2 <- tmp[tmp$dscore>.05,]
+
+
+
+
+
+
+# interaction tests between ifn factor and other factors in determining symptoms
+all_pvals <- c()
+f_tested <- c()
+c_tested <- c()
+# loop through the variables to test
+for (j in 1:ncol(clin_vars)) {
+  print(j)
+  # loop through factors
+  # for (f in 1:ncol(dsc)) {
+  for (f in 2:4) {
+    # get donors in clin var that don't have an NA value
+    d_keep <- rownames(clin_vars)[!is.na(clin_vars[,j])]
+    
+    tmp <- as.data.frame(cbind(dsc[d_keep,1],dsc[d_keep,f], clin_vars[d_keep,j]))
+    colnames(tmp) <- c('f1_dsc','f2_dsc','cvar')
+    
+    # # force cvar to be factor
+    # tmp$cvar <- as.factor(tmp$cvar)
+    
+    # # if smallest level has less thatn n donors skip this one
+    # if (min(table(tmp$cvar)) < 10) {
+    #   next
+    # }
+    
+    # # trying with logistic regression model
+    # fmod <- glm(cvar ~ f1_dsc + f2_dsc + f1_dsc*f2_dsc, data=tmp, family = "binomial") ##"full" mod
+    # nmod <- glm(cvar ~ f1_dsc + f2_dsc, data=tmp, family = 'binomial') ##"null" mod
+    # a_res <- anova(nmod, fmod, test = 'Chisq')
+    # pval <- a_res$`Pr(>Chi)`[2]
+    
+    fmod <- lm(cvar ~ f1_dsc + f2_dsc + f1_dsc*f2_dsc, data=tmp)
+    nmod <- lm(cvar ~ f1_dsc + f2_dsc, data=tmp)
+    a_res <- anova(nmod, fmod, test = 'Chisq')
+    pval <- a_res$`Pr(>Chi)`[2]
+    
+    all_pvals <- c(all_pvals,pval)
+    f_tested <- c(f_tested,f)
+    c_tested <- c(c_tested,colnames(clin_vars)[j])
+    
+  }
+}
+all_pvals <- p.adjust(all_pvals,method='fdr')
+all_pvals[order(all_pvals,decreasing=FALSE)][1:40]
+f_tested[order(all_pvals,decreasing=FALSE)][1:40]
+c_tested[order(all_pvals,decreasing=FALSE)][1:40]
+
+
+
+
+
+
+
+
+## trying to limit by ethnicity
+cv <- read_excel('/home/jmitchel/data/lupus_data/SLE_clinical_data.xlsx')
+cv <- as.data.frame(cv)
+rownames(cv) <- cv$subjectid
+rasian <- cv[,'raceasian',drop=F]
+head(rasian)
+rasian <- rasian[d_both,,drop=FALSE]
+d_both <- d_both[rasian==1]
+d_both <- d_both[!is.na(d_both)]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

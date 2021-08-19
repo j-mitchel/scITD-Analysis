@@ -88,7 +88,7 @@ pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex'),
 # pdf(file = "/home/jmitchel/figures/for_paper/lupus_dscores_v2.pdf", useDingbats = FALSE,
 #     width = 6, height = 7)
 pbmc_container$plots$donor_matrix
-# dev.off()
+dev.off()
 
 # 
 # get significant genes
@@ -1416,7 +1416,8 @@ container$plots$stability_plot_lds
 
 
 pbmc_container <- run_stability_analysis(pbmc_container,ranks=c(7,20,7),n_iterations=50,subset_type='bootstrap')
-pbmc_container <- run_stability_analysis(pbmc_container,ranks=c(7,20,7),n_iterations=50,subset_type='subset', sub_prop=.75)
+pbmc_container <- run_stability_analysis(pbmc_container,ranks=c(7,20,7),n_iterations=500,subset_type='subset', sub_prop=.75)
+pbmc_container <- run_stability_analysis(pbmc_container,ranks=c(9,20,7),n_iterations=10,subset_type='subset', sub_prop=.75)
 
 pbmc_container <- run_stability_analysis(pbmc_container,ranks=c(10,20,7),n_iterations=50,subset_type='bootstrap')
 pbmc_container <- run_stability_analysis(pbmc_container,ranks=c(10,20,7),n_iterations=50,subset_type='subset', sub_prop=.75)
@@ -1427,7 +1428,11 @@ pbmc_container <- run_stability_analysis(pbmc_container,ranks=c(11,20,7),n_itera
                                          tucker_type='sparse',sparsity=sqrt(2))
 pbmc_container <- run_stability_analysis(pbmc_container,ranks=c(4,10,5),n_iterations=50,subset_type='subset', sub_prop=.75,)
 
+pdf(file = "/home/jmitchel/figures/test.pdf", useDingbats = FALSE,
+    width = 5, height = 6)
 pbmc_container$plots$stability_plot_dsc
+dev.off()
+
 pbmc_container$plots$stability_plot_lds
 
 

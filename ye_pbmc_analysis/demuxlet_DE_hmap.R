@@ -220,8 +220,12 @@ pbmc_container <- make_new_container(count_data=pbmc_all, meta_data=pbmc_meta,
 
 pbmc_container <- form_tensor(pbmc_container, donor_min_cells=5, gene_min_cells=10,
                               norm_method='trim', scale_factor=10000,
-                              vargenes_method='norm_var_pval', vargenes_thresh=1,
+                              vargenes_method='norm_var_pvals', vargenes_thresh=1,
                               scale_var = TRUE, var_scale_power = .85)
+pbmc_container <- form_tensor(pbmc_container, donor_min_cells=5, gene_min_cells=10,
+                              norm_method='trim', scale_factor=10000,
+                              vargenes_method='norm_var_pvals', vargenes_thresh=1,
+                              scale_var = TRUE, var_scale_power = .5) #testing this with new method
 
 pb_cM <- pbmc_container[["scMinimal_ctype"]][["CD14+ Monocytes"]][["pseudobulk"]]
 pb_cd4 <- pbmc_container[["scMinimal_ctype"]][["CD4 T cells"]][["pseudobulk"]]
@@ -323,6 +327,8 @@ myhmap <- Heatmap(pb_total,
                   right_annotation = myannot)
 
 pdf(file = "/home/jmitchel/figures/for_paper/demuxlet_de_by_donors_v2.pdf", useDingbats = FALSE,
+    width = 4.75, height = 5.5)
+pdf(file = "/home/jmitchel/figures/for_paper_v2/demuxlet_de_hmap.pdf", useDingbats = FALSE,
     width = 4.75, height = 5.5)
 myhmap
 dev.off()

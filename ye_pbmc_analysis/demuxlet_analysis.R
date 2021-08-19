@@ -69,6 +69,8 @@ pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(1,6,6),
                                  tucker_type = 'regular', rotation_type = 'ica')
 pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(2,4,2),
                                  tucker_type = 'regular', rotation_type = 'ica')
+pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(2,8,2),
+                                 tucker_type = 'regular', rotation_type = 'ica')
 
 pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('stim'),stat_use='pval')
 
@@ -76,7 +78,11 @@ pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('stim'),
                                     cluster_by_meta = 'stim',
                                     show_donor_ids = TRUE,
                                     add_meta_associations='pval')
+
+pdf(file = "/home/jmitchel/figures/test.pdf", useDingbats = FALSE,
+    width = 6, height = 7)
 pbmc_container$plots$donor_matrix
+dev.off()
 
 # get significant genes
 pbmc_container <- run_jackstraw(pbmc_container, ranks=c(3,6,6), n_fibers=100, n_iter=1000,
@@ -85,19 +91,24 @@ pbmc_container <- run_jackstraw(pbmc_container, ranks=c(1,6,6), n_fibers=100, n_
                                 tucker_type='regular', rotation_type='ica')
 pbmc_container <- run_jackstraw(pbmc_container, ranks=c(2,4,2), n_fibers=100, n_iter=2000,
                                 tucker_type='regular', rotation_type='ica')
+pbmc_container <- run_jackstraw(pbmc_container, ranks=c(2,8,2), n_fibers=100, n_iter=1000,
+                                tucker_type='regular', rotation_type='ica')
+pbmc_container <- run_jackstraw_v2(pbmc_container, ranks=c(2,8,2), n_fibers=100, n_iter=1000,
+                                tucker_type='regular', rotation_type='ica')
+pbmc_container <- get_lm_pvals(pbmc_container)
 
 # get loadings plots
 pbmc_container <- plot_loadings_annot(pbmc_container, factor_select=1,
                                       use_sig_only=TRUE,
                                       nonsig_to_zero=TRUE,
-                                      sig_thresh=.05,
+                                      sig_thresh=.01,
                                       display_genes=FALSE,
                                       gene_callouts=TRUE,
                                       specific_callouts=c('MX1','CCL3',
                                                           'ANXA5','DDIT3',
                                                           'MYC'))
 
-pdf(file = "/home/jmitchel/figures/for_paper/demuxlet_loadings_v2.pdf", useDingbats = FALSE,
+pdf(file = "/home/jmitchel/figures/for_paper_v2/demuxlet_loadings_v2.pdf", useDingbats = FALSE,
     width = 5.25, height = 6)
 draw(pbmc_container[["plots"]][["all_lds_plots"]][["1"]],
                          annotation_legend_list = pbmc_container[["plots"]][["all_legends"]][["1"]],
@@ -188,7 +199,7 @@ sig_tested_in_both
 
 
 # save.image(file = "/home/jmitchel/data/lupus_data/demuxlet_scITD_comparison.RData")
-load("/home/jmitchel/data/lupus_data/demuxlet_scITD_comparison.RData")
+# load("/home/jmitchel/data/lupus_data/demuxlet_scITD_comparison.RData")
 
 
 # plotting just the first factor in the sample scores matrix
@@ -199,16 +210,17 @@ pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('stim'),stat_
 
 pbmc_container <- plot_donor_matrix(pbmc_container,
                                     show_donor_ids = TRUE)
-# pdf(file = "/home/jmitchel/figures/for_paper/demuxlet_scores.pdf", useDingbats = FALSE,
-#     width = 3, height = 6)
+pdf(file = "/home/jmitchel/figures/for_paper_v2/demuxlet_scores.pdf", useDingbats = FALSE,
+    width = 3, height = 6)
 pbmc_container$plots$donor_matrix
-# dev.off()
+dev.off()
 
 
 
 ## calculating correlation between fold change and loadings for all gene_ctype combos present in both
 lds_both <- c()
 fc_both <- c()
+sig_both <- c()
 for (i in 1:nrow(tmp_casted_num)) {
   gene <- rownames(tmp_casted_num)[i]
   for (j in 1:ncol(tmp_casted_num)) {
@@ -218,25 +230,32 @@ for (i in 1:nrow(tmp_casted_num)) {
         demux_fc <- cd4.expressed.res[gene,'log2FoldChange']
         fc_both <- c(fc_both,demux_fc)
         lds_both <- c(lds_both,tmp_casted_num[i,j])
+        sig_both <- c(sig_both,sig_df[i,j])
       }
     } else if (ctype=='CD14+ Monocytes') {
       if (gene %in% rownames(cd14.expressed.res)) {
         demux_fc <- cd14.expressed.res[gene,'log2FoldChange']
         fc_both <- c(fc_both,demux_fc)
         lds_both <- c(lds_both,tmp_casted_num[i,j])
+        sig_both <- c(sig_both,sig_df[i,j])
       }
     }
   }
 }
 
 cor(lds_both,fc_both,method = 'spearman')
-tmp <- as.data.frame(cbind(lds_both,fc_both))
-colnames(tmp) <- c('loading','log2FC')
-# pdf(file = "/home/jmitchel/figures/for_paper/demuxlet_loading_vs_log2FC_v2.pdf", useDingbats = FALSE,
-#     width = 4, height = 1.5)
-ggplot(tmp,aes(x=log2FC,y=loading)) +
-  geom_point(alpha = 0.175) +
-  theme_bw()
+tmp <- as.data.frame(cbind(lds_both,fc_both,sig_both))
+colnames(tmp) <- c('loading','log2FC','sig_val')
+tmp$sig_val <- tmp$sig_val<.01
+pdf(file = "/home/jmitchel/figures/for_paper_v2/demuxlet_loading_vs_log2FC_v2.pdf", useDingbats = FALSE,
+    width = 4, height = 1.5)
+pdf(file = "/home/jmitchel/figures/for_paper_v2/demuxlet_loading_vs_log2FC_v2.pdf", useDingbats = FALSE,
+    width = 4, height = 1.5)
+ggplot(tmp,aes(x=log2FC,y=loading,color=sig_val)) +
+  geom_point(alpha = .1, pch=19) +
+  theme_bw() +
+  scale_color_manual(values=c("#000000", "#FF0000")) +
+  guides(color = FALSE)
 dev.off()
 
 
@@ -272,51 +291,53 @@ colnames(tmp) <- c('scITD_padj','DE_padj')
 rownames(tmp) <- gene_ct
 tmp$scITD_padj[tmp$scITD_padj<.0001] <- .0001
 tmp$DE_padj[tmp$DE_padj<.000000000000001] <- .000000000000001
-# tmp$DE_padj[tmp$DE_padj<.0000000000000000000000000000000000000000000000000001] <- .0000000000000000000000000000000000000000000000000001
 
+tmp$scITD_padj[tmp$scITD_padj<.000001] <- .000001
+tmp$DE_padj[tmp$DE_padj<.0000000000001] <- .0000000000001
 
-# pdf(file = "/home/jmitchel/figures/for_paper/demuxlet_jackstraw_vs_DEpval_v2.pdf", useDingbats = FALSE,
-#     width = 4.5, height = 3.5)
+pdf(file = "/home/jmitchel/figures/for_paper_v2/demuxlet_lm_vs_DEpval_v2.pdf", useDingbats = FALSE,
+    width = 4.5, height = 3)
 ggplot(tmp,aes(x=-log(DE_padj,base=10),y=-log(scITD_padj,base=10))) +
-  geom_point(alpha = 0.3) +
+  geom_point(alpha = 0.3,pch=19) +
   theme_bw() +
   geom_hline(yintercept=-log10(.05), linetype="dashed", color = "red") +
   geom_vline(xintercept=-log10(.05), linetype="dashed", color = "red") +
   xlab('DE -log10(adj p-value)') +
-  ylab('scITD Jackstraw\n-log10(adj p-value)')
+  ylab('F1 gene significance\n-log10(adj p-value)')
 dev.off()
 
 # calculate number of genes above horizontal line and below vertical line
 mask <- tmp
 mask <- -log10(mask)
-sum(mask$DE_padj<(-log10(.05)) & mask$scITD_padj>(-log10(.05)))
+pv_thresh=.05
+sum(mask$DE_padj<(-log10(pv_thresh)) & mask$scITD_padj>(-log10(pv_thresh)))
 
 # now get vice versa
-sum(mask$DE_padj>(-log10(.05)) & mask$scITD_padj<(-log10(.05)))
+sum(mask$DE_padj>(-log10(pv_thresh)) & mask$scITD_padj<(-log10(pv_thresh)))
 
 # get DE both
-sum(mask$DE_padj>(-log10(.05)) & mask$scITD_padj>(-log10(.05)))
+sum(mask$DE_padj>(-log10(pv_thresh)) & mask$scITD_padj>(-log10(pv_thresh)))
 
 
-#### trying with no jackstraw gene significance 
-# get associations as gene.ct.factor
-pvals <- get_real_fstats(pbmc_container,ncores=4) # using pvals for this fn
-padj <- p.adjust(pvals,method='fdr')
-names(padj) <- sapply(names(padj),function(x) {
-  return(substr(x,1,nchar(x)-6))
-})
-
-pbmc_container[["gene_score_associations"]] <- padj
-# now rerun plot above
-
-pdf(file = "/home/jmitchel/figures/for_paper/demuxlet_no_jackstraw_vs_DEpval_v2.pdf", useDingbats = FALSE,
-    width = 4.5, height = 3.5)
-ggplot(tmp,aes(x=-log(DE_padj,base=10),y=-log(scITD_padj,base=10))) +
-  geom_point(alpha = 0.3) +
-  theme_bw() +
-  geom_hline(yintercept=-log10(.05), linetype="dashed", color = "red") +
-  geom_vline(xintercept=-log10(.05), linetype="dashed", color = "red") +
-  xlab('DE -log10(adj p-value)') +
-  ylab('scITD Jackstraw\n-log10(adj p-value)')
-dev.off()
+# #### trying with no jackstraw gene significance 
+# # get associations as gene.ct.factor
+# pvals <- get_real_fstats(pbmc_container,ncores=4) # using pvals for this fn
+# padj <- p.adjust(pvals,method='fdr')
+# names(padj) <- sapply(names(padj),function(x) {
+#   return(substr(x,1,nchar(x)-6))
+# })
+# 
+# pbmc_container[["gene_score_associations"]] <- padj
+# # now rerun plot above
+# 
+# pdf(file = "/home/jmitchel/figures/for_paper/demuxlet_no_jackstraw_vs_DEpval_v2.pdf", useDingbats = FALSE,
+#     width = 4.5, height = 3.5)
+# ggplot(tmp,aes(x=-log(DE_padj,base=10),y=-log(scITD_padj,base=10))) +
+#   geom_point(alpha = 0.3) +
+#   theme_bw() +
+#   geom_hline(yintercept=-log10(.05), linetype="dashed", color = "red") +
+#   geom_vline(xintercept=-log10(.05), linetype="dashed", color = "red") +
+#   xlab('DE -log10(adj p-value)') +
+#   ylab('scITD Jackstraw\n-log10(adj p-value)')
+# dev.off()
 

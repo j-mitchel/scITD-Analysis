@@ -7,6 +7,7 @@ clin_vars <- as.data.frame(read_excel('/home/jmitchel/data/lupus_data/SLE_clinic
 rownames(clin_vars) <- clin_vars$subjectid
 eth = clin_vars[,'race',drop=FALSE]
 eth = clin_vars[,'raceeth',drop=FALSE]
+# eth = clin_vars[,'age',drop=FALSE]
 
 # load data of categorical variables
 clin_vars <- read_excel('/home/jmitchel/data/lupus_data/SLE_clinical_data_categorical.xlsx')
@@ -117,6 +118,13 @@ for (j in 1:ncol(clin_vars)) {
     # lmres <- summary(lm(dscore ~ cvar, data=tmp))
     # pval <- stats::pf(lmres$fstatistic[1],lmres$fstatistic[2],lmres$fstatistic[3],lower.tail=FALSE)
 
+    # # trying lm with regress out covariates
+    # lm1 <- lm(dscore ~ eth, data=tmp)
+    # lm2 <- lm(dscore ~ cvar + eth, data=tmp)
+    # anova_res <- anova(lm1,lm2)
+    # pval <- anova_res$`Pr(>F)`[2]
+    
+    
     # # trying with two sample t-test
     # t_res <- try(stats::t.test(dscore ~ cvar, data=tmp,
     #                        alternative = "two.sided",var.equal = FALSE))
@@ -822,7 +830,7 @@ sum(all_scores>myscore)/1000
 # old_dsc <- dsc
 dsc <- old_dsc
 tmp <- as.data.frame(cbind(dsc[,2],clin_vars[,'crflupusneph'],clin_vars[,'acrantidsdna']))
-# tmp <- as.data.frame(cbind(dsc[,4],clin_vars[,'crflupusneph'],clin_vars[,'acrantismith']))
+# tmp <- as.data.frame(cbind(dsc[,2],clin_vars[,'crflupusneph'],clin_vars[,'acrantismith']))
 tmp <- tmp[order(tmp[,1],decreasing=TRUE),]
 colnames(tmp) <-  c('dscore','ln','dsdna')
 
@@ -867,13 +875,15 @@ for (testndx in 1:1000) {
   }
   
   # testing co-occurrance of LN and dsdna with factor 2
-  tmp <- as.data.frame(cbind(dsc[,2],clin_vars[,'crflupusneph'],clin_vars[,'acrantidsdna']))
+  # tmp <- as.data.frame(cbind(dsc[,2],clin_vars[,'crflupusneph'],clin_vars[,'acrantidsdna']))
   # tmp <- as.data.frame(cbind(dsc[,4],clin_vars[,'crflupusneph'],clin_vars[,'acrantidsdna']))
-  # tmp <- as.data.frame(cbind(dsc[,4],clin_vars[,'crflupusneph'],clin_vars[,'acrantismith']))
+  tmp <- as.data.frame(cbind(dsc[,2],clin_vars[,'crflupusneph'],clin_vars[,'acrantismith']))
   tmp <- tmp[order(tmp[,1],decreasing=TRUE),]
   colnames(tmp) <-  c('dscore','ln','dsdna')
   
   tmp <- tmp[tmp$dsdna==1,]
+  # tmp <- tmp[tmp$dsdna==0,]
+  
   stored_counts <- c()
   for (i in 1:(nrow(tmp)-window_size+1)) {
     tests <- tmp[i:(i+window_size-1),'ln']
@@ -1285,13 +1295,64 @@ d_both <- d_both[!is.na(d_both)]
 
 
 
+## testing LN dsdna w linear model
+head(tmp)
+tmp$ln <- as.factor(tmp$ln)
+t.test(dscore~ln,data=tmp)
+
+# with logistic regression
+fmod <- glm(ln~dscore, data=tmp, family = "binomial") ##"full" mod
+nmod <- glm(ln~1, data=tmp, family = 'binomial') ##"null" mod
+fmod <- glm(dsdna~dscore, data=tmp, family = "binomial") ##"full" mod
+nmod <- glm(dsdna~1, data=tmp, family = 'binomial') ##"null" mod
+a_res <- anova(nmod, fmod, test = 'Chisq')
+pval <- a_res$`Pr(>Chi)`[2]
+pval
+
+tmp$ln <- as.factor(tmp$ln)
+ggplot(tmp,aes(x=ln,y=dscore)) +
+  geom_violin(scale='count')
+ggplot(tmp,aes(x=ln,y=dscore)) +
+  geom_violin(scale='area')
+
+tmp <- tmp[tmp$ln==1,]
+tmp$dsdna <- as.factor(tmp$dsdna)
+ggplot(tmp,aes(x=dsdna,y=dscore)) +
+  geom_violin(scale='count')
+
+## trying with enrichment
+mypaths=list()
+mypaths[['ln']] <- rownames(tmp)[tmp[,'ln']==1]
+
+myranks <- tmp[,'dscore']
+names(myranks) <- rownames(tmp)
+
+fgseaRes <- fgsea::fgseaSimple(pathways = mypaths,
+                         stats    = myranks,
+                         minSize  = 0,
+                         nperm=10000,
+                         maxSize  = 5000,
+                         gseaParam=2)
+
+print(fgseaRes)
 
 
 
+## trying interaction model
+tmp$ln <- as.factor(tmp$ln)
+tmp$dsdna <- as.factor(tmp$dsdna)
 
+nmod <- lm(dscore~ln+dsdna,data=tmp)
+fmod <- lm(dscore~ln+dsdna+ln*dsdna,data=tmp)
+a_res <- anova(nmod, fmod, test = 'Chisq')
+pval <- a_res$`Pr(>Chi)`[2]
+pval
 
-
-
+nmod <- glm(dsdna~ln, data=tmp, family = 'binomial') ##"null" mod
+fmod <- glm(dsdna~ln+dscore, data=tmp, family = "binomial") ##"full" mod
+a_res <- anova(nmod, fmod, test = 'Chisq')
+pval <- a_res$`Pr(>Chi)`[2]
+pval
 
 
 

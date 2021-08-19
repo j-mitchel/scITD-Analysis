@@ -3,9 +3,29 @@ library(Seurat)
 # load up the subsetted dataset
 pbmc <- readRDS('/home/jmitchel/data/lupus_data/lupus_subsetted_seurat_v3.rds')
 
+# converting shorthand cell type names to full names
+new_names <- sapply(as.character(pbmc@meta.data$cg_cov), function(x){
+    if (x=='cM') {
+        return('cMono')
+    } else if (x=='ncM') {
+        return('ncMono')
+    } else if (x=='T4') {
+        return('Th')
+    } else if (x=='T8') {
+        return('Tc')
+    } else {
+        return(x)
+    }
+})
+names(new_names) <- NULL
+pbmc@meta.data$cg_cov <- factor(new_names,levels=unique(new_names))
+
 # set up project parameters
-param_list <- initialize_params(ctypes_use = c("B","NK","T4","T8","cDC",
-                                               "cM","ncM"),
+# param_list <- initialize_params(ctypes_use = c("B","NK","T4","T8","cDC",
+#                                                "cM","ncM"),
+#                                 ncores = 30, rand_seed = 10)
+param_list <- initialize_params(ctypes_use = c("B","NK","Th","Tc","cDC",
+                                               "cMono","ncMono"),
                                 ncores = 30, rand_seed = 10)
 
 pbmc_container <- make_new_container(seurat_obj=pbmc,
@@ -17,7 +37,8 @@ pbmc_container <- make_new_container(seurat_obj=pbmc,
                                                      "sex",
                                                      "Age",
                                                      "batch_cov",
-                                                     "Processing_Cohort"),
+                                                     "Processing_Cohort",
+                                                     "Ethnicity"),
                                      metadata_col_nm=c('donors',
                                                        'SLE_status',
                                                        'Status',
@@ -25,16 +46,25 @@ pbmc_container <- make_new_container(seurat_obj=pbmc,
                                                        'sex',
                                                        'Age',
                                                        'pool',
-                                                       'processing'))
+                                                       'processing',
+                                                       "Ethnicity"))
 
 
 pbmc_container <- form_tensor(pbmc_container, donor_min_cells=20, gene_min_cells=20,
                               norm_method='trim', scale_factor=10000,
                               vargenes_method='norm_var_pvals', vargenes_thresh=.05,
                               scale_var = TRUE, var_scale_power = 1.5)
+# pbmc_container <- form_tensor(pbmc_container, donor_min_cells=20, gene_min_cells=20,
+#                               norm_method='trim', scale_factor=10000,
+#                               vargenes_method='norm_var_pvals', vargenes_thresh=.15,
+#                               scale_var = TRUE, var_scale_power = .5)
 
 pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(20,30,7),
                                  tucker_type = 'regular', rotation_type = 'ica')
+
+# pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(25,37,7),
+#                                  tucker_type = 'regular', rotation_type = 'ica')
+
 
 # get factor-meta data associations
 pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('pool','processing'))
@@ -45,8 +75,8 @@ pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('pool','processi
                                     show_donor_ids = FALSE,
                                     add_meta_associations='rsq')
 
-# pdf(file = "/home/jmitchel/figures/for_paper/lupus_batch_dscores.pdf", useDingbats = FALSE,
-#     width = 7, height = 6.5)
+pdf(file = "/home/jmitchel/figures/for_paper_v2/lupus_batch_dscores.pdf", useDingbats = FALSE,
+    width = 7, height = 6.5)
 pbmc_container$plots$donor_matrix
 dev.off()
 

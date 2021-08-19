@@ -160,6 +160,7 @@ names(all_df_net) <- donors
 
 # saveRDS(all_df_net,file='/home/jmitchel/data/lupus_data/LR_cell_chat_res_d_sep_list.rds')
 # saveRDS(all_df_net_comb,file='/home/jmitchel/data/lupus_data/LR_cell_chat_res_d_sep.rds')
+all_df_net_comb <- readRDS(file='/home/jmitchel/data/lupus_data/LR_cell_chat_res_d_sep.rds')
 
 
 head(all_df_net_comb)
@@ -192,10 +193,18 @@ tnf_yes[my_ord]
 
 
 
+## trying out nichenet ligand to target stuff
+ligand_target_matrix = readRDS(url("https://zenodo.org/record/3260758/files/ligand_target_matrix.rds"))
 
+# seeing if ICOSLG results are enriched for cell cycle and T signaling genes
+test = ligand_target_matrix[,'ICOSLG']
+test = ligand_target_matrix[,'TNFSF13B']
+test = ligand_target_matrix[,'TNF']
+test2 <- test[order(test,decreasing=TRUE)][1:50]
 
-
-
+library(enrichR)
+dbs <- c("GO_Molecular_Function_2015", "GO_Cellular_Component_2015", "GO_Biological_Process_2015")
+enriched <- enrichr(names(test2),dbs)
 
 
 

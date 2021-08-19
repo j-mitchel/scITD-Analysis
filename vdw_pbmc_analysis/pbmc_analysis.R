@@ -11,8 +11,25 @@ pbmc_meta <- readRDS('/home/jmitchel/data/van_der_wijst/pbmc_meta_v2.rds')
 # ensembl to gene name conversions
 feature.names <- readRDS('/home/jmitchel/data/van_der_wijst/genes.rds')
 
+# change names of ctypes to match those from sle dataset
+pbmc_meta$ctypes <- sapply(as.character(pbmc_meta$ctypes),function(x){
+  if (x=='CD4+ T') {
+    return('Th')
+  } else if (x=='cMonocyte') {
+    return('cMono')
+  } else if (x=='CD8+ T') {
+    return('Tc')
+  } else {
+    return(x)
+  }
+})
+
+pbmc_meta$ctypes <- as.factor(pbmc_meta$ctypes)
+
 # set up project parameters
-param_list <- initialize_params(ctypes_use = c("CD4+ T", "CD8+ T", "cMonocyte", "CD56(dim) NK", "B"),
+# param_list <- initialize_params(ctypes_use = c("CD4+ T", "CD8+ T", "cMonocyte", "CD56(dim) NK", "B"),
+#                                 ncores = 30, rand_seed = 10)
+param_list <- initialize_params(ctypes_use = c("Th", "Tc", "cMono", "CD56(dim) NK", "B"),
                                 ncores = 30, rand_seed = 10)
 
 # pbmc_container <- make_new_container(count_data=pbmc_counts, meta_data=pbmc_meta,
@@ -41,12 +58,19 @@ pbmc_container <- make_new_container(count_data=pbmc_counts, meta_data=pbmc_meta
 #                               vargenes_method='anova', vargenes_thresh=.02,
 #                               scale_var = TRUE, var_scale_power = 2)
 
+# pbmc_container <- form_tensor(pbmc_container, donor_min_cells=5, gene_min_cells=5,
+#                               norm_method='trim', scale_factor=10000,
+#                               vargenes_method='norm_var_pvals', vargenes_thresh=.1,
+#                               scale_var = TRUE, var_scale_power = 2)
+
 pbmc_container <- form_tensor(pbmc_container, donor_min_cells=5, gene_min_cells=5,
                               norm_method='trim', scale_factor=10000,
-                              vargenes_method='norm_var_pvals', vargenes_thresh=.1,
-                              scale_var = TRUE, var_scale_power = 2)
+                              vargenes_method='norm_var_pvals', vargenes_thresh=.15,
+                              scale_var = TRUE, var_scale_power = 1.5)
 
-pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(5,10,5),
+# pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(5,10,5),
+#                                  tucker_type = 'regular', rotation_type = 'ica')
+pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(6,10,5),
                                  tucker_type = 'regular', rotation_type = 'ica')
 
 # get factor-meta data associations
@@ -70,10 +94,14 @@ pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('lanes'),
 
 pbmc_container$plots$donor_matrix
 
-# pdf(file = "/home/jmitchel/figures/for_paper/pbmc_dscores_oqe.pdf", useDingbats = FALSE,
-#     width = 6, height = 6.5)
+pdf(file = "/home/jmitchel/figures/for_paper_v2/pbmc_dscores.pdf", useDingbats = FALSE,
+    width = 6, height = 6.5)
 pbmc_container$plots$donor_matrix
 dev.off()
+
+
+# get significant genes
+pbmc_container <- get_lm_pvals(pbmc_container)
 
 
 # get assistance with rank determination
@@ -124,11 +152,29 @@ pbmc_container[["gene_score_associations"]] <- readRDS(file='/home/jmitchel/data
 ## get loadings plots (for paper)
 pbmc_container <- get_all_lds_factor_plots(pbmc_container, use_sig_only=TRUE,
                                            nonsig_to_zero=TRUE,
-                                           sig_thresh=.02,
+                                           sig_thresh=.01,
                                            display_genes=F,
                                            gene_callouts = TRUE,
                                            callout_n_gene_per_ctype=5,
                                            show_var_explained = FALSE)
+
+
+pdf(file = "/home/jmitchel/figures/for_paper_v2/pbmc_loadings_hbb_factor.pdf", useDingbats = FALSE,
+    width = 4, height = 3.5)
+draw(pbmc_container[["plots"]][["all_lds_plots"]][["5"]],
+     annotation_legend_list = pbmc_container[["plots"]][["all_legends"]][["5"]],
+     legend_grouping = "original",
+     newpage=TRUE)
+dev.off()
+
+pdf(file = "/home/jmitchel/figures/for_paper_v2/pbmc_loadings_xy2_factor.pdf", useDingbats = FALSE,
+    width = 4, height = 4)
+draw(pbmc_container[["plots"]][["all_lds_plots"]][["3"]],
+     annotation_legend_list = pbmc_container[["plots"]][["all_legends"]][["3"]],
+     legend_grouping = "original",
+     newpage=TRUE)
+dev.off()
+
 
 pdf(file = "/home/jmitchel/figures/for_paper/pbmc_loadings_xy2_factor.pdf", useDingbats = FALSE,
     width = 4, height = 4)

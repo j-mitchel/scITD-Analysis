@@ -68,7 +68,7 @@ pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(7,20,7),
 pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('sex','Age','pool','processing','Ethnicity'),
                                         stat_use='pval')
 
-# plot donor score
+## plot donor score
 pbmc_container <- plot_donor_matrix(pbmc_container,
                                     show_donor_ids = FALSE,
                                     add_meta_associations='pval')

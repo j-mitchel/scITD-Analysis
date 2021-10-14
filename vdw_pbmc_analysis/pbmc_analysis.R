@@ -2,8 +2,8 @@
 library(scITD)
 
 # counts matrix
-# pbmc_counts <- readRDS('/home/jmitchel/data/van_der_wijst/pbmc_counts_v2.rds')
-pbmc_counts <- readRDS('/home/jmitchel/data/van_der_wijst/pbmc_counts_v2_winsorized_simple.rds')
+pbmc_counts <- readRDS('/home/jmitchel/data/van_der_wijst/pbmc_counts_v2.rds')
+# pbmc_counts <- readRDS('/home/jmitchel/data/van_der_wijst/pbmc_counts_v2_winsorized_simple.rds')
 
 # meta data matrix
 pbmc_meta <- readRDS('/home/jmitchel/data/van_der_wijst/pbmc_meta_v2.rds')
@@ -63,15 +63,19 @@ pbmc_container <- make_new_container(count_data=pbmc_counts, meta_data=pbmc_meta
 #                               vargenes_method='norm_var_pvals', vargenes_thresh=.1,
 #                               scale_var = TRUE, var_scale_power = 2)
 
-pbmc_container <- form_tensor(pbmc_container, donor_min_cells=5, gene_min_cells=5,
+pbmc_container <- form_tensor(pbmc_container, donor_min_cells=5,
                               norm_method='trim', scale_factor=10000,
                               vargenes_method='norm_var_pvals', vargenes_thresh=.15,
                               scale_var = TRUE, var_scale_power = 1.5)
 
 # pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(5,10,5),
 #                                  tucker_type = 'regular', rotation_type = 'ica')
-pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(6,10,5),
-                                 tucker_type = 'regular', rotation_type = 'ica')
+pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(6,10),
+                                 tucker_type = 'regular', rotation_type = 'ica_dsc')
+# pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(6,10),
+#                                  tucker_type = 'regular', rotation_type = 'hybrid')
+# pca_unfolded(pbmc_container,6)
+
 
 # get factor-meta data associations
 pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('sex','lanes'),
@@ -80,17 +84,17 @@ pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('sex'),
                                         stat_use='pval')
 
 # plot donor scores
-pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex','lanes'),
-                                    show_donor_ids = TRUE,
-                                    add_meta_associations=TRUE)
+# pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex','lanes'),
+#                                     show_donor_ids = TRUE,
+#                                     add_meta_associations=TRUE)
 pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex','lanes'),
                                     show_donor_ids = FALSE,
                                     cluster_by_meta='sex',
                                     add_meta_associations=TRUE)
-pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('lanes'),
-                                    show_donor_ids = TRUE,
-                                    cluster_by_meta='lanes',
-                                    add_meta_associations=TRUE)
+# pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('lanes'),
+#                                     show_donor_ids = TRUE,
+#                                     cluster_by_meta='lanes',
+#                                     add_meta_associations=TRUE)
 
 pbmc_container$plots$donor_matrix
 
@@ -103,6 +107,15 @@ dev.off()
 # get significant genes
 pbmc_container <- get_lm_pvals(pbmc_container)
 
+pbmc_container <- determine_ranks_tucker(pbmc_container, max_ranks_test=c(10,15,5),
+                                         shuffle_level='cells', 
+                                         num_iter=10, 
+                                         norm_method='trim',
+                                         scale_factor=10000,
+                                         scale_var=TRUE,
+                                         var_scale_power=2)
+
+pbmc_container$plots$rank_determination_plot
 
 # get assistance with rank determination
 pbmc_container <- determine_ranks_tucker(pbmc_container, max_ranks_test=c(10,15,5),

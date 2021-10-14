@@ -58,7 +58,7 @@ pbmc_container <- make_new_container(count_data=pbmc_all, meta_data=pbmc_meta,
                                      params=param_list,
                                      label_donor_sex = FALSE)
 
-pbmc_container <- form_tensor(pbmc_container, donor_min_cells=5, gene_min_cells=10,
+pbmc_container <- form_tensor(pbmc_container, donor_min_cells=5, 
                               norm_method='trim', scale_factor=10000,
                               vargenes_method='norm_var', vargenes_thresh=1500,
                               scale_var = TRUE, var_scale_power = .5)
@@ -68,7 +68,7 @@ pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(3,6,6),
 pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(1,6,6),
                                  tucker_type = 'regular', rotation_type = 'ica')
 pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(2,4,2),
-                                 tucker_type = 'regular', rotation_type = 'ica')
+                                 tucker_type = 'regular', rotation_type = 'ica_dsc')
 pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(2,8,2),
                                  tucker_type = 'regular', rotation_type = 'ica')
 
@@ -340,4 +340,175 @@ sum(mask$DE_padj>(-log10(pv_thresh)) & mask$scITD_padj>(-log10(pv_thresh)))
 #   xlab('DE -log10(adj p-value)') +
 #   ylab('scITD Jackstraw\n-log10(adj p-value)')
 # dev.off()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##### doing subsampling and recalculation of loadings-FC correlation
+cor_helper <- function(tmp_casted_num,cd4.expressed.res,cd14.expressed.res) {
+  lds_both <- c()
+  fc_both <- c()
+  for (i in 1:nrow(tmp_casted_num)) {
+    gene <- rownames(tmp_casted_num)[i]
+    for (j in 1:ncol(tmp_casted_num)) {
+      ctype <- colnames(tmp_casted_num)[j]
+      if (ctype=='CD4 T cells') {
+        if (gene %in% rownames(cd4.expressed.res)) {
+          demux_fc <- cd4.expressed.res[gene,'log2FoldChange']
+          fc_both <- c(fc_both,demux_fc)
+          lds_both <- c(lds_both,tmp_casted_num[i,j])
+        }
+      } else if (ctype=='CD14+ Monocytes') {
+        if (gene %in% rownames(cd14.expressed.res)) {
+          demux_fc <- cd14.expressed.res[gene,'log2FoldChange']
+          fc_both <- c(fc_both,demux_fc)
+          lds_both <- c(lds_both,tmp_casted_num[i,j])
+        }
+      }
+    }
+  }
+  
+  mycor <- cor(lds_both,fc_both,method = 'spearman')
+  return(mycor)
+}
+
+
+num_donors <- nrow(pbmc_container$scMinimal_ctype[[1]]$pseudobulk)
+
+cells_per_donor <- table(pbmc_container$scMinimal_full$metadata[,c('donors','ctypes')])
+
+combined_meta <- pbmc_container$scMinimal_full$metadata[,c('donors','ctypes')]
+combined_meta <- combined_meta[combined_meta$ctypes %in% c('CD4 T cells','CD14+ Monocytes'),]
+combined_meta$ctypes <- factor(combined_meta$ctypes,levels=unique(combined_meta$ctypes))
+
+full_counts <- pbmc_container$scMinimal_full$count_data
+
+sizes_test <- c(12,20,40,60,80,100,120)
+downsample_sizes <- num_donors * 2 * sizes_test
+
+all_cors <- c()
+cpd <- c()
+for (ds in downsample_sizes) {
+  # subsample data to correct mean size 
+  prev_subs <- list()
+  prev_ident <- FALSE
+  for (myiter in 1:5) {
+    min_cpd <- 0
+    while (min_cpd < 5 | prev_ident) {
+      prev_ident <- FALSE
+      cells_sampled <- sample(rownames(combined_meta),ds)
+      meta_sub <- combined_meta[cells_sampled,]
+      cells_per_donor <- table(meta_sub[,c('donors','ctypes')])
+      min_cpd <- min(cells_per_donor)
+      
+      # determine whether subsampling was previously recorded
+      if (length(prev_subs)>1) {
+        for (j in 1:length(prev_subs)) {
+          if (identical(prev_subs[[j]],cells_sampled)) {
+            prev_ident <- TRUE
+          }
+        }
+      }
+    }
+    prev_subs[[length(prev_subs)+1]] <- cells_sampled
+    
+    counts_sub <- full_counts[,cells_sampled]
+    
+    param_list <- initialize_params(ctypes_use = c("CD14+ Monocytes",
+                                                   "CD4 T cells"),
+                                    ncores = 30, rand_seed = 10)
+    
+    pbmc_container <- make_new_container(count_data=counts_sub, meta_data=meta_sub,
+                                         params=param_list,
+                                         label_donor_sex = FALSE)
+    
+    pbmc_container <- form_tensor(pbmc_container, donor_min_cells=0, 
+                                  norm_method='trim', scale_factor=10000,
+                                  vargenes_method='norm_var', vargenes_thresh=1500,
+                                  scale_var = TRUE, var_scale_power = .5)
+    
+    pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(2,4,2),
+                                     tucker_type = 'regular', rotation_type = 'ica_dsc')
+    
+    ## compute loadings-FC correlations
+    f1 <- get_one_factor(pbmc_container,1)
+    f1_lds <- f1[[2]]
+    
+    my_cor <- cor_helper(f1_lds,cd4.expressed.res,cd14.expressed.res)
+    
+    # store results
+    all_cors <- c(all_cors,my_cor)
+    cpd <- c(cpd,ds)
+  }
+}
+
+
+# plot results
+tmp <- cbind.data.frame(all_cors,cpd,cpd/(num_donors * 2))
+colnames(tmp) <- c('spearman_cor','total_num_cells','cells_donor_ctype')
+tmp$spearman_cor <- abs(tmp$spearman_cor)
+
+# get mean values for each factor at each value of cells_per
+tmp2_means <- c()
+tmp2_cells_per <- c()
+for (cp in unique(tmp$cells_donor_ctype)) {
+  tmp_sub <- tmp[tmp$cells_donor_ctype==cp,]
+  tmp2_means <- c(tmp2_means,mean(abs(tmp_sub$spearman_cor)))
+  tmp2_cells_per <- c(tmp2_cells_per,cp)
+}
+
+tmp2 <- cbind.data.frame(tmp2_means,tmp2_cells_per)
+colnames(tmp2) <- c('spearman_cor','cells_donor_ctype')
+
+tmp <- tmp[tmp$cells_donor_ctype!=12,]
+tmp2 <- tmp2[tmp2$cells_donor_ctype!=12,]
+
+pdf(file = "/home/jmitchel/figures/for_paper_v2/demux_loading_cor_subsamp3.pdf", useDingbats = FALSE,
+    width = 4, height = 2.25)
+ggplot(tmp,aes(x=cells_donor_ctype,y=spearman_cor)) +
+  geom_point() +
+  geom_line(data=tmp2,aes(x=cells_donor_ctype,y=spearman_cor)) +
+  xlab('Av. cells per donor_cell type') +
+  ylab('Loadings-log2FC cor') +
+  theme_bw()
+dev.off()
+
+
 

@@ -1,5 +1,5 @@
 library(splatter)
-require(PRROC)
+library(PRROC)
 
 ## trying new approach by adding two DE datasets together
 all_donors <- sapply(1:40,function(x) {
@@ -336,23 +336,25 @@ param_list <- initialize_params(ctypes_use = c("ct1", "ct2"),
 pbmc_container <- make_new_container(count_data=combined_counts_sparse, meta_data=combined_meta,
                                      params=param_list)
 
-pbmc_container <- form_tensor(pbmc_container, donor_min_cells=5, gene_min_cells=5,
+pbmc_container <- form_tensor(pbmc_container, donor_min_cells=5,
                               norm_method='trim', scale_factor=10000,
-                              vargenes_method='norm_var_pval', vargenes_thresh=1,
+                              vargenes_method='norm_var_pvals', vargenes_thresh=1,
                               scale_var = TRUE, var_scale_power = .5)
-pbmc_container <- form_tensor(pbmc_container, donor_min_cells=5, gene_min_cells=5,
-                              norm_method='trim', scale_factor=10000,
-                              vargenes_method='norm_var', vargenes_thresh=750,
-                              scale_var = TRUE, var_scale_power = .5)
+# pbmc_container <- form_tensor(pbmc_container, donor_min_cells=5, gene_min_cells=5,
+#                               norm_method='trim', scale_factor=10000,
+#                               vargenes_method='norm_var', vargenes_thresh=750,
+#                               scale_var = TRUE, var_scale_power = .5)
 
-pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(2,4,2),
-                                 tucker_type = 'regular', rotation_type = 'ica')
+# pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(2,4,2),
+#                                  tucker_type = 'regular', rotation_type = 'ica')
+pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(2,4),
+                                 tucker_type = 'regular', rotation_type = 'ica_dsc')
 
 # plot donor scores
 pbmc_container <- plot_donor_matrix(pbmc_container,
                                     show_donor_ids = TRUE)
 
-# pdf(file = "/home/jmitchel/figures/for_paper/sim_v3_dscores.pdf", useDingbats = FALSE,
+# pdf(file = "/home/jmitchel/figures/for_paper_v2/sim_v3_dscores.pdf", useDingbats = FALSE,
 #     width = 6, height = 7)
 pbmc_container$plots$donor_matrix
 dev.off()
@@ -365,18 +367,18 @@ pbmc_container <- get_lm_pvals(pbmc_container)
 
 ## making loadings plots when limiting to just most variable genes so it's easier to see them but will
 # use all genes when computing accuracy of jackstraw in determining ground truth DE genes
-pdf(file = "/home/jmitchel/figures/for_paper/sim_ldngs_v3_f1.pdf", useDingbats = FALSE,
+pdf(file = "/home/jmitchel/figures/for_paper_v2/sim_ldngs_v3_f1.pdf", useDingbats = FALSE,
     width = 8, height = 3.5)
-pbmc_container <- plot_loadings_annot(pbmc_container, factor_select=1, use_sig_only=FALSE, nonsig_to_zero=FALSE, annot='sig_genes',
-                    pathways=NULL, sim_de_donor_group=list(de1_ct1,de1_ct2), sig_thresh=0.02, display_genes=FALSE, 
+pbmc_container <- plot_loadings_annot(pbmc_container, factor_select=1, use_sig_only=TRUE, nonsig_to_zero=FALSE, annot='sig_genes',
+                    pathways=NULL, sim_de_donor_group=list(de1_ct1,de1_ct2), sig_thresh=0.1, display_genes=FALSE, 
                     gene_callouts=FALSE, callout_n_gene_per_ctype=5, callout_ctypes=NULL, show_xlab=TRUE,
                     show_var_explained=FALSE, reset_other_factor_plots=FALSE, draw_plot=TRUE)
 dev.off()
 
-pdf(file = "/home/jmitchel/figures/for_paper/sim_ldngs_v3_f2.pdf", useDingbats = FALSE,
+pdf(file = "/home/jmitchel/figures/for_paper_v2/sim_ldngs_v3_f2.pdf", useDingbats = FALSE,
     width = 8, height = 3.5)
-pbmc_container <- plot_loadings_annot(pbmc_container, factor_select=2, use_sig_only=FALSE, nonsig_to_zero=FALSE, annot='sig_genes',
-                    pathways=NULL, sim_de_donor_group=list(de2_ct1,de2_ct2), sig_thresh=0.02, display_genes=FALSE, 
+pbmc_container <- plot_loadings_annot(pbmc_container, factor_select=2, use_sig_only=TRUE, nonsig_to_zero=FALSE, annot='sig_genes',
+                    pathways=NULL, sim_de_donor_group=list(de2_ct1,de2_ct2), sig_thresh=0.1, display_genes=FALSE, 
                     gene_callouts=FALSE, callout_n_gene_per_ctype=5, callout_ctypes=NULL, show_xlab=TRUE,
                     show_var_explained=FALSE, reset_other_factor_plots=FALSE, draw_plot=TRUE)
 dev.off()
@@ -390,6 +392,11 @@ sig_vectors <- get_significance_vectors(pbmc_container,
 sig_df <- t(as.data.frame(do.call(rbind, sig_vectors)))
 pred1 <- c(sig_df)
 
+## trying using loadings instead
+sig_df <- get_one_factor(pbmc_container,1)[[2]]
+pred1 <- abs(c(sig_df))
+##
+
 ct1_de <- de1_ct1
 ct1_de <- ct1_de[rownames(sig_df),]
 ct2_de <- de1_ct2
@@ -398,7 +405,7 @@ de_true1 <- c(ct1_de$DEFacGroup2!=1,ct2_de$DEFacGroup2!=1)
 
 library(pROC)
 
-# pdf(file = "/home/jmitchel/figures/for_paper/sim_v3_auc_f1.pdf", useDingbats = FALSE,
+# pdf(file = "/home/jmitchel/figures/for_paper_v2/sim_v3_auc_f1.pdf", useDingbats = FALSE,
 #     width = 4, height = 4)
 pROC_obj <- roc(de_true1,pred1,
                 smoothed = TRUE,
@@ -420,8 +427,8 @@ ct2_de <- de2_ct2
 ct2_de <- ct2_de[rownames(sig_df),]
 de_true2 <- c(ct1_de$DEFacGroup2!=1,ct2_de$DEFacGroup2!=1)
 
-# pdf(file = "/home/jmitchel/figures/for_paper/sim_v3_auc_f2.pdf", useDingbats = FALSE,
-#     width = 4, height = 4)
+pdf(file = "/home/jmitchel/figures/for_paper_v2/sim_v3_auc_f2.pdf", useDingbats = FALSE,
+    width = 4, height = 4)
 pROC_obj <- roc(de_true2,pred2,
                 smoothed = TRUE,
                 ci=FALSE,
@@ -440,7 +447,7 @@ pbmc_container <- determine_ranks_tucker(pbmc_container, max_ranks_test=c(7,10,2
                                          scale_var=TRUE,
                                          var_scale_power=.5)
 
-pdf(file = "/home/jmitchel/figures/for_paper/sim_v3_rank_determination.pdf", useDingbats = FALSE,
+pdf(file = "/home/jmitchel/figures/for_paper_v2/sim_v3_rank_determination.pdf", useDingbats = FALSE,
     width = 7, height = 7)
 pbmc_container$plots$rank_determination_plot
 dev.off()
@@ -456,7 +463,7 @@ num_donors <- length(all_donors)
 cells_per_donor <- table(combined_meta$donors)
 
 sizes_test <- c(15,20,40,60,80,100,120,140,160)
-sizes_test <- c(100,120,140,160)
+# sizes_test <- c(100,120,140,160)
 downsample_sizes <- num_donors * 2 * sizes_test
 
 f1_aucs <- c()
@@ -495,15 +502,15 @@ for (ds in downsample_sizes) {
     pbmc_container <- make_new_container(count_data=counts_sub, meta_data=meta_sub,
                                          params=param_list)
     
-    pbmc_container <- form_tensor(pbmc_container, donor_min_cells=5, gene_min_cells=5,
+    pbmc_container <- form_tensor(pbmc_container, donor_min_cells=0, 
                                   norm_method='trim', scale_factor=10000, 
-                                  vargenes_method='norm_var_pval', vargenes_thresh=1,
+                                  vargenes_method='norm_var_pvals', vargenes_thresh=1,
                                   scale_var = TRUE, var_scale_power = .5)
     
     # do decomposition
-    pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(2,4,2),
-                                     tucker_type = 'regular', rotation_type = 'ica')
-    
+    pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(2,4),
+                                     tucker_type = 'regular', rotation_type = 'ica_dsc')
+
     # determine which factor is process1
     dscores <- pbmc_container$tucker_results[[1]]
     m1 <- abs(mean(dscores[dg1,1]))
@@ -512,8 +519,9 @@ for (ds in downsample_sizes) {
     ndx_other <- order(c(m1,m2),decreasing=TRUE)[2]
     
     # get significant genes
-    pbmc_container <- run_jackstraw(pbmc_container, ranks=c(2,4,2), n_fibers=100, n_iter=1000,
-                                    tucker_type='regular', rotation_type='ica')
+    # pbmc_container <- run_jackstraw(pbmc_container, ranks=c(2,4,2), n_fibers=100, n_iter=1000,
+    #                                 tucker_type='regular', rotation_type='ica')
+    pbmc_container <- get_lm_pvals(pbmc_container)
     
     # evaluate AUC
     # do factor 1 first
@@ -522,6 +530,11 @@ for (ds in downsample_sizes) {
     # convert list to df
     sig_df <- t(as.data.frame(do.call(rbind, sig_vectors)))
     pred1 <- c(sig_df)
+    
+    # ## trying using loadings instead
+    # sig_df <- get_one_factor(pbmc_container,ndx_max)[[2]]
+    # pred1 <- abs(c(sig_df))
+    # ##
     
     ct1_de <- de1_ct1
     ct1_de <- ct1_de[rownames(sig_df),]
@@ -533,13 +546,18 @@ for (ds in downsample_sizes) {
                     smoothed = TRUE,
                     plot=FALSE, AUC=TRUE)
     auc1 <- pROC_obj[["auc"]]
-    
+    auc1
     ## now do factor 2
     sig_vectors <- get_significance_vectors(pbmc_container,
                                             factor_select=ndx_other, c('ct1','ct2'))
     # convert list to df
     sig_df <- t(as.data.frame(do.call(rbind, sig_vectors)))
     pred2 <- c(sig_df)
+    
+    # ## trying using loadings instead
+    # sig_df <- get_one_factor(pbmc_container,ndx_other)[[2]]
+    # pred2 <- abs(c(sig_df))
+    # ##
     
     ct1_de <- de2_ct1
     ct1_de <- ct1_de[rownames(sig_df),]
@@ -595,14 +613,16 @@ for (cp in unique(tmp$cells_per)) {
 tmp2 <- cbind.data.frame(tmp2_means,tmp2_process,tmp2_cells_per)
 colnames(tmp2) <- c('auc_mean','pr','mcp')
 
-pdf(file = "/home/jmitchel/figures/for_paper/sim_AUC_vs_ncells.pdf", useDingbats = FALSE,
+pdf(file = "/home/jmitchel/figures/for_paper_v2/sim_AUC_vs_ncells.pdf", useDingbats = FALSE,
     width = 5, height = 5)
 ggplot(tmp,aes(x=cells_per,y=auc_val,color=process)) +
   geom_point() +
   geom_line(data=tmp2,aes(x=mcp,y=auc_mean,color=pr)) +
   xlab('Av. cells per donor_cell type') +
   ylab('AUC') +
-  theme_bw()
+  theme_bw() +
+  theme(axis.text=element_text(size=10),
+        axis.title=element_text(size=14))
 dev.off()
 
 

@@ -7,6 +7,23 @@ library(Seurat)
 pbmc <- readRDS('/home/jmitchel/data/lupus_data/lupus_subsetted_seurat_v3.rds')
 
 
+# #### temporarily testing downsampling donors such that there are equal in each disease severity category
+# table(clin_vars$sledaiscore)
+# dim(clin_vars)
+# d_to_samp <- rownames(clin_vars)[clin_vars$sledaiscore %in% c(0,2,4)]
+# d_samp <- sample(d_to_samp,25)
+# d_keep_other <- rownames(clin_vars)[clin_vars$sledaiscore %in% c(3,5,6,7,8,9,16)]
+# d_keep <- c(d_samp,d_keep_other)
+# table(clin_vars[d_keep,'sledaiscore'])
+# all_d_keep_full <- names(trim_names)[trim_names %in% d_keep]
+# 
+# cells_keep <- rownames(pbmc@meta.data)[pbmc@meta.data$ind_cov_batch_cov %in% all_d_keep_full]
+# pbmc <- subset(pbmc,cells = cells_keep)
+# ####
+
+
+
+
 # converting shorthand cell type names to full names
 new_names <- sapply(as.character(pbmc@meta.data$cg_cov), function(x){
   if (x=='cM') {
@@ -62,8 +79,10 @@ pbmc_container <- form_tensor(pbmc_container, donor_min_cells=20,
                               batch_var='pool')
 
 
-pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(7,20,7),
+pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(7,20),
                                  tucker_type = 'regular', rotation_type = 'hybrid')
+
+# pca_unfolded(pbmc_container,7) # testing using PCA on unfolded tensor instead of Tucker
 
 pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('sex','Age','pool','processing','Ethnicity'),
                                         stat_use='pval')
@@ -73,10 +92,10 @@ pbmc_container <- plot_donor_matrix(pbmc_container,
                                     show_donor_ids = FALSE,
                                     add_meta_associations='pval')
 
-pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_only_dscores.pdf", useDingbats = FALSE,
-    width = 5, height = 6)
-pdf(file = "/home/jmitchel/figures/test.pdf", useDingbats = FALSE,
-    width = 5, height = 6)
+# pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_only_dscores.pdf", useDingbats = FALSE,
+#     width = 5, height = 6)
+# pdf(file = "/home/jmitchel/figures/test.pdf", useDingbats = FALSE,
+#     width = 5, height = 6)
 pbmc_container$plots$donor_matrix
 dev.off()
 
@@ -308,9 +327,11 @@ dev.off()
 
 
 ## getting enriched gene sets for factor 2
-# run gsea for a f1
+# run gsea for a f2
 pbmc_container <- run_gsea_one_factor(pbmc_container, factor_select=2, method="fgsea", thresh=0.05,
                                       db_use=c("GO"))
+pbmc_container <- run_gsea_one_factor(pbmc_container, factor_select=2, method="fgsea", thresh=0.05,
+                                      db_use=c("GO"),signed=FALSE)
 pdf(file = "/home/jmitchel/figures/test.pdf", useDingbats = FALSE,
     width = 14, height = 7)
 plot_gsea_hmap_w_similarity(pbmc_container,factor_select=2,direc='up',thresh=.05,
@@ -319,7 +340,7 @@ dev.off()
 
 pdf(file = "/home/jmitchel/figures/test.pdf", useDingbats = FALSE,
     width = 14, height = 14)
-plot_gsea_sub(pbmc_container,thresh=.05,clust_select=10)
+plot_gsea_sub(pbmc_container,thresh=.05,clust_select=1)
 dev.off()
 
 ## f4 sets to show on loading hmap
@@ -355,46 +376,60 @@ dev.off()
 #### exploratory analysis of IFN associations with sledai score
 
 # try plotting IFI6 levels vs sledai score
-d_exp <- pbmc_container[["scMinimal_ctype"]][['Th']][["pseudobulk"]][,'MX2']
-
-trim_names <- sapply(names(d_exp), function(x) {
-  strsplit(x,split='_')[[1]][[1]]
-})
-names(d_exp) <- trim_names
-
-tmp <- cbind.data.frame(clin_vars[trim_names,'sledaiscore'],dsc[trim_names,1],d_exp[trim_names])
-colnames(tmp) <- c('sledai','dsc','expres')
-lm1 <- lm(sledai~expres,data=tmp)
-lm2 <- lm(sledai~dsc+expres,data=tmp)
-anova(lm1,lm2)
+# d_exp <- pbmc_container[["scMinimal_ctype"]][['Th']][["pseudobulk"]][,'MX2']
+# 
+# trim_names <- sapply(names(d_exp), function(x) {
+#   strsplit(x,split='_')[[1]][[1]]
+# })
+# names(d_exp) <- trim_names
+# 
+# tmp <- cbind.data.frame(clin_vars[trim_names,'sledaiscore'],dsc[trim_names,1],d_exp[trim_names])
+# colnames(tmp) <- c('sledai','dsc','expres')
+# lm1 <- lm(sledai~expres,data=tmp)
+# lm2 <- lm(sledai~dsc+expres,data=tmp)
+# anova(lm1,lm2)
 
 # getting the eigengene for the GO set of IFN genes
 pb <- pbmc_container[["scMinimal_ctype"]][['Th']][["pseudobulk"]]
 go_ifn <- read.csv(file='/home/jmitchel/IFN_gene_list.csv')
 go_ifn <- go_ifn[go_ifn[,1] %in% colnames(pb),1]
 
-go_ifn <- c('HERC5', 'IFI27', 'IRF7', 'ISG15', 'LY6E', 'MX1', 'OAS2', 'OAS3', 'RSAD2', 'USP18', 'GBP5') # or use Rao set
-go_ifn <- go_ifn[go_ifn %in% colnames(pb)]
+# go_ifn <- c('HERC5', 'IFI27', 'IRF7', 'ISG15', 'LY6E', 'MX1', 'OAS2', 'OAS3', 'RSAD2', 'USP18', 'GBP5') # or use Rao set
+# go_ifn <- c('IFI6', 'IFI27', 'ISG15', 'MX1', 'XAF') # or use Rao set
+# go_ifn <- go_ifn[go_ifn %in% colnames(pb)]
 
 pb_ifn <- pb[,go_ifn] # subset expression to just the ifn genes
-inf_egene <- svd(pb_ifn)$u[,1] # get IFN eigengene
-names(inf_egene) <- rownames(pb_ifn)
+trim_names <- sapply(rownames(pb_ifn), function(x) {
+  strsplit(x,split='_')[[1]][[1]]
+})
+# inf_egene <- svd(pb_ifn)$u[,1] # get IFN eigengene
+# names(inf_egene) <- rownames(pb_ifn)
+# names(inf_egene) <- trim_names
+
+inf_egene <- rowMeans(pb_ifn) # average IFN gene expression
 names(inf_egene) <- trim_names
 
+dsc <- pbmc_container$tucker_results[[1]]
+dsc <- dsc[names(trim_names),]
+rownames(dsc) <- trim_names
+
 # evaluating association between IFN egene and sledai
-tmp <- cbind.data.frame(clin_vars[trim_names,'sledaiscore'],dsc[trim_names,1],inf_egene[names(trim_names)])
-tmp <- cbind.data.frame(clin_vars[trim_names,'acrantidsdna'],dsc[trim_names,1],inf_egene[names(trim_names)])
+tmp <- cbind.data.frame(clin_vars[trim_names,'sledaiscore'],dsc[trim_names,1],inf_egene[trim_names])
+# tmp <- cbind.data.frame(clin_vars[trim_names,'acrantidsdna'],dsc[trim_names,1],inf_egene[trim_names])
 # tmp <- cbind.data.frame(clin_vars[trim_names,'acrantidsdna'],dsc[trim_names,1],inf_egene[trim_names])
 colnames(tmp) <- c('sledai','dsc','expres')
-lm1 <- lm(sledai~expres,data=tmp)
-lm2 <- lm(sledai~dsc+expres,data=tmp)
-anova(lm1,lm2)
+# lm1 <- lm(sledai~expres,data=tmp)
+# lm2 <- lm(sledai~dsc+expres,data=tmp)
+# anova(lm1,lm2)
+# 
+# lm2 <- lm(sledai~dsc,data=tmp)
+# 
+# coxtest(lm1,lm2)
+# jtest(lm1,lm2)
+# encomptest(lm1,lm2)
 
-lm2 <- lm(sledai~dsc,data=tmp)
-
-coxtest(lm1,lm2)
-jtest(lm1,lm2)
-encomptest(lm1,lm2)
+cor(tmp$sledai,tmp$expres)
+cor(tmp$sledai,tmp$dsc)
 
 
 # trying logistic regression method
@@ -544,7 +579,7 @@ dev.off()
 
 
 ## running LR analysis with new functions
-# prep for new LR analysis
+# using cellchat database
 lr_pairs <- read.csv(file='/home/jmitchel/data/LR_datasets/Human-2020-Jin-LR-pairs.csv')
 lr_pairs <- lr_pairs[,c('ligand','interaction_name')]
 lr_pairs$receptor <- sapply(lr_pairs$interaction_name,function(x) {
@@ -553,18 +588,39 @@ lr_pairs$receptor <- sapply(lr_pairs$interaction_name,function(x) {
 })
 lr_pairs$interaction_name <- NULL
 
+# or use iTalk database
+library(iTALK)
+dim(iTALK::database)
+head(database)
+lr_pairs <- database[,c('Ligand.ApprovedSymbol','Receptor.ApprovedSymbol')]
+colnames(lr_pairs) <- c('ligand','receptor')
+lr_pairs <- unique(lr_pairs)
 
+# or use singlecellsignalr database
+lr_pairs <- read.csv(file='/home/jmitchel/data/LR_datasets/singlecellsignalr_LR.csv')
+
+# infer active LR interactions
 pbmc_container <- prep_LR_interact(pbmc_container, lr_pairs, norm_method='trim', scale_factor=10000,
                                    var_scale_power=.5, batch_var='pool')
 sft_thresh <- c(12,14,12,10,12,9,12)
 pbmc_container <- get_gene_modules(pbmc_container,sft_thresh)
 
-lr_hmap <- compute_LR_interact_v4(pbmc_container, lr_pairs, sig_thresh=0.0000000001,
-                                   percentile_exp_rec=0.75, add_ld_fact_sig=TRUE)
+lr_hmap <- compute_LR_interact(pbmc_container, lr_pairs, sig_thresh=0.000001,
+                                   percentile_exp_rec=0.85, add_ld_fact_sig=TRUE)
+lr_hmap <- compute_LR_interact(pbmc_container, lr_pairs, sig_thresh=.00000000005,
+                               percentile_exp_rec=0.85, add_ld_fact_sig=TRUE)
+
+# ## save LR analysis results
+# saveRDS(pbmc_container[["lr_res"]],file='/home/jmitchel/data/lupus_data/cchat_LR_all.rds')
+# saveRDS(pbmc_container[["lr_res"]],file='/home/jmitchel/data/lupus_data/singlecellsignalr_LR_all.rds')
+
+pbmc_container[["lr_res"]] <- readRDS(file='/home/jmitchel/data/lupus_data/cchat_LR_all.rds')
+myres_mat <- pbmc_container[["lr_res"]]
+# for new hmap, I used sig_thresh=.00000000005
 
 lr_hmap <- myhmap1
-pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_new_lr.pdf", useDingbats = FALSE,
-    width = 8.25, height = 8.25)
+pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_new_lr8.pdf", useDingbats = FALSE,
+    width = 6, height = 7)
 lr_hmap
 dev.off()
 
@@ -605,8 +661,10 @@ length(unique_channels)
 ligand_target_matrix = readRDS(url("https://zenodo.org/record/3260758/files/ligand_target_matrix.rds"))
 test = ligand_target_matrix[,'TNFSF13B']
 test = ligand_target_matrix[,'ICOSLG']
+test = ligand_target_matrix[,'CD80']
 b_mod = pbmc_container[["module_genes"]][["B"]]
 b_mod = pbmc_container[["module_genes"]][["Th"]]
+mymod <- c(1)
 mymod <- c(5)
 g_in_mod <- names(b_mod)[b_mod%in%mymod]
 g_not_mod <- names(b_mod)[!(b_mod%in%mymod)]
@@ -616,14 +674,38 @@ tmp <- cbind.data.frame(c(g_in_mod,g_not_mod),
                         c(rep('Th_m5',length(g_in_mod)),rep('other',length(g_not_mod))))
 colnames(tmp) <- c('gn','in_mod')
 tmp$in_mod <- factor(tmp$in_mod,levels=c('Th_m5','other'))
+tmp$in_mod <- factor(tmp$in_mod,levels=c('B_m1','other'))
 target_scores <- test[tmp$gn]
 tmp$target_scores <- target_scores
 tmp <- tmp[which(!is.na(target_scores)),]
-ggplot(tmp,aes(x=as.factor(in_mod),y=target_scores)) +
+p <- ggplot(tmp,aes(x=as.factor(in_mod),y=target_scores)) +
   geom_boxplot(notch=TRUE) +
-  ylab('NicheNet regulatory potential') +
-  xlab('')
-wilcox.test(target_scores~in_mod,data=tmp)
+  ylab('ICOSLG NicheNet regulatory potential') +
+  xlab('') +
+  theme_bw()
+test_res <- wilcox.test(target_scores~in_mod,data=tmp)
+test_res$p.value
+
+pdf(file = "/home/jmitchel/figures/for_paper_v2/ICOSLG_NicheNet_enr.pdf", useDingbats = FALSE,
+    width = 4, height = 3.5)
+p
+dev.off()
+
+
+
+## testing whether TNFSF13B significantly improves prediction of module levels when F1 scores are taken into account
+meg <- pbmc_container[["module_eigengenes"]][["B"]][,"ME1",drop=FALSE]
+expres <- pbmc_container[["scale_pb_extra"]][["cMono"]][,'TNFSF13B',drop=FALSE]
+dsc <- get_one_factor(pbmc_container,1)[[1]]
+tmp <- cbind.data.frame(meg[rownames(dsc),],expres[rownames(dsc),],dsc)
+colnames(tmp) <- c('mod_eg','my_exp','dscore')
+lm1 <- lm(mod_eg~my_exp,data=tmp)
+lm2 <- lm(mod_eg~dscore+my_exp+dscore*my_exp,data=tmp)
+lm1 <- lm(mod_eg~dscore+my_exp,data=tmp)
+anova(lm1, lm2)
+library(lmtest)
+lrtest(lm1, lm2)
+
 
 
 pbmc_container <- compute_LR_interact(pbmc_container, lr_pairs, factor_select=1, 
@@ -639,9 +721,11 @@ dev.off()
 # getting GO enrichment HMAPs for modules
 ctypes <- c('B')
 modules <- c(1)
+ctypes <- c('Th')
+modules <- c(5)
 
 mod_enr <- plot_multi_module_enr(pbmc_container, ctypes, modules, sig_thresh=.05, db_use='TF')
-mod_enr <- plot_multi_module_enr(pbmc_container, ctypes, modules, sig_thresh=.00001, db_use=c('GO'),max_plt_pval=.01)
+mod_enr <- plot_multi_module_enr(pbmc_container, ctypes, modules, sig_thresh=.002, db_use=c('GO'),max_plt_pval=.002,h_w=c(7,3))
 mod_enr <- plot_multi_module_enr(pbmc_container, ctypes, modules, sig_thresh=.01, db_use=c('Reactome'))
 mod_enr <- plot_multi_module_enr(pbmc_container, ctypes, modules, sig_thresh=.01, db_use=c('KEGG'))
 mod_enr <- plot_multi_module_enr(pbmc_container, ctypes, modules, sig_thresh=.01, db_use=c('BioCarta'))
@@ -650,6 +734,8 @@ mod_enr <- plot_multi_module_enr(pbmc_container, ctypes, modules, sig_thresh=.01
 
 pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_TNFSF13B_gsets.pdf", useDingbats = FALSE,
     width = 7, height = 10)
+pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_ICOSLG_gsets.pdf", useDingbats = FALSE,
+    width = 5, height = 5)
 mod_enr
 dev.off()
 
@@ -661,10 +747,13 @@ df = simplifyGO(mat,word_cloud_grob_param = list(max_width = 80),fontsize_range=
 dev.off()
 
 
-lig_mod_fact <- plot_mod_and_lig(pbmc_container,factor_select=2,mod_ct='Th',mod=8,lig_ct='cMpno',lig='ICOSLG')
+lig_mod_fact <- plot_mod_and_lig(pbmc_container,factor_select=2,mod_ct='Th',mod=8,lig_ct='cMono',lig='ICOSLG')
+lig_mod_fact <- plot_mod_and_lig(pbmc_container,factor_select=2,mod_ct='Th',mod=5,lig_ct='cMono',lig='ICOSLG')
 lig_mod_fact <- plot_mod_and_lig(pbmc_container,factor_select=5,mod_ct='cMono',mod=3,lig_ct='Th',lig='TNFSF8')
 lig_mod_fact <- plot_mod_and_lig(pbmc_container,factor_select=1,mod_ct='B',mod=1,lig_ct='cMono',lig='TNFSF13B')
 pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_TNFSF13B_trio.pdf", useDingbats = FALSE,
+    width = 6, height = 5)
+pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_ICOSLG_trio.pdf", useDingbats = FALSE,
     width = 6, height = 5)
 lig_mod_fact
 dev.off()
@@ -936,6 +1025,31 @@ pdf(file = "/home/jmitchel/figures/for_paper_v2/major_ctype_props.pdf", useDingb
 pbmc_container$plots$ctype_prop_factor_associations
 dev.off()
 
+# testing B cell subprops association with pred factor
+pbmc_container <- get_ctype_subc_prop_associations(pbmc_container,ctype='B',res=.5,n_col=2,alt_name='B')
+pbmc_container$plots$ctype_prop_factor_associations
+
+# getting an example dotplot to show for demonstrating the process
+myplot <- get_subclust_enr_dotplot(pbmc_container,'T4',0.6,subtype=1,factor_use=1)
+pdf(file = "/home/jmitchel/figures/for_paper_v2/CD4_f1_sub1_dot.pdf", useDingbats = FALSE,
+    width = 5.25, height = 3.5)
+p
+# myplot
+dev.off()
+
+
+
+## saving results from multi-resolution prop-factor associations for all ctypes
+# saveRDS(res,file='/home/jmitchel/data/lupus_data/subc_assoc_all.rds') #they're adjusted already
+res <- readRDS(file='/home/jmitchel/data/lupus_data/subc_assoc_all.rds')
+res <- res[res$ctype=='Th',]
+reg_stat_plots <- plot_subclust_associations(res,n_col=2) # to generate the plot
+
+pdf(file = "/home/jmitchel/figures/for_paper_v2/Th_multi_res.pdf", useDingbats = FALSE,
+    width = 5, height = 6.25)
+reg_stat_plots
+dev.off()
+
 
 
 ## plotting F6 (sex-associated factor) associations with cell proportion shifts
@@ -1004,8 +1118,280 @@ dev.off()
 
 
 
+## testing whether the highest pred dose donor has higher MIF + NFKB1 and lower CHUK/IKBKB/IKBKG
+pb <- pbmc_container$scMinimal_ctype[['NK']]$pseudobulk
+pb <- pbmc_container$scMinimal_ctype[['Tc']]$pseudobulk
+trim_names <- sapply(rownames(pb), function(x) {
+  strsplit(x,split='_')[[1]][[1]]
+})
+names(trim_names) <- NULL
+rownames(pb) <- trim_names
 
-## trying new lr method
+# reduce to just those who are on prednisone
+pred_don <- rownames(clin_vars)[clin_vars$prednisone==1]
+
+pb['1768','MIF']
+
+# qqnorm(mif_ord[pred_don], pch = 1, frame = FALSE)
+# qqline(mif_ord[pred_don], col = "steelblue", lwd = 2)
+
+mif_ord <- pb[pred_don,'MIF']
+mu <- mean(mif_ord)
+std <- sd(mif_ord)
+
+outlier_zsc <- (mif_ord['1768'] - mu) / std
+
+# getting index of MIF expression
+mif_ord <- mif_ord[order(mif_ord,decreasing=TRUE)]
+outlier_percentile <- which(names(mif_ord)=='1768')/length(mif_ord)
+outlier_percentile
+
+
+
+
+
+## testing whether those pred+ with lower factor 3 scores are statistically higher MIF in general
+f3_sc <- get_one_factor(pbmc_container,3)
+dsc <- f3_sc[[1]]
+trim_names <- sapply(rownames(dsc), function(x) {
+  strsplit(x,split='_')[[1]][[1]]
+})
+names(trim_names) <- NULL
+rownames(dsc) <- trim_names
+hist(dsc)
+dsc <- dsc[,1]
+low_f3 <- names(dsc)[dsc<(-.05)]
+high_f3 <- names(dsc)[dsc>0.05]
+
+
+t.test(mif_ord[low_f3],mif_ord[high_f3])
+
+tmp <- cbind.data.frame(dsc[names(mif_ord)],mif_ord)
+colnames(tmp) <- c('dscore','mif')
+summary(lm(mif~dscore,tmp))
+
+
+
+
+
+### testing prop problem
+all_pvs <- c()
+for (j in 1:1000) {
+  res <- matrix(nrow=1000,ncol=6)
+  for (i in 1:1000) {
+    mysamp <- sample(1:100,5)
+    mysamp <- mysamp/sum(mysamp)
+    res[i,2:6] <- mysamp
+    res[i,1] <- sample(1:100,1)
+  }
+  colnames(res) <- c('y','x1','x2','x3','x4','x5')
+  res <- as.data.frame(res)
+  lmres <- summary(lm(y~x1+x2+x3+x4+x5,data=res))
+  pval <- stats::pf(lmres$fstatistic[1],lmres$fstatistic[2],lmres$fstatistic[3],lower.tail=FALSE)
+  all_pvs <- c(all_pvs,pval)
+}
+hist(all_pvs)
+
+
+
+### seeing if PCA extracts the prednisone process for Th cell type
+pb <- pbmc_container[["scMinimal_ctype"]][["NK"]][["pseudobulk"]]
+
+pr_res <- prcomp(pb,center = FALSE,scale.=FALSE)
+donor_mat <- pr_res[["x"]]
+ldngs <- pr_res[["rotation"]]
+
+
+clin_vars <- read_excel('/home/jmitchel/data/lupus_data/SLE_meds_cleaned.xlsx')
+clin_vars <- as.data.frame(clin_vars)
+rownames(clin_vars) <- clin_vars[,'Sample ID']
+clin_vars[,'Sample ID'] <- NULL
+
+# make all NA into zeros, since no 0 are put in the table
+clin_vars[is.na(clin_vars)] <- 0
+
+# separate out pred dose as it's the only continuous variable here
+pred_dose <- clin_vars[,'pred_dose',drop=FALSE]
+clin_vars[,'pred_dose'] <- NULL
+
+# make sure there are no columns of all zeros
+colSums(clin_vars)
+
+# need to remove a few columns that have only 1 or 0 donors on the med
+clin_vars[,c('solumedrol','rx_abatacept','rx_cyclophosphamide','rx_etanercept',
+             'rx_IGG','rx_leflunomide','rx_rituximab','rx_sulfasalazine')] <- NULL
+
+
+# get tucker donor scores to test
+dsc <- donor_mat
+
+## get donors in both dsc and in clin_vars
+# trim donor IDs in dsc
+trim_names <- sapply(rownames(dsc), function(x) {
+  strsplit(x,split='_')[[1]][[1]]
+})
+names(trim_names) <- c()
+old_names <- rownames(dsc)
+names(old_names) <- trim_names
+rownames(dsc) <- trim_names
+
+# get donors in both dataframes
+d_both <- rownames(clin_vars)[rownames(clin_vars) %in% rownames(dsc)]
+
+# limit both dataframes to just the intersection of donors and in the same order
+dsc <- dsc[d_both,]
+clin_vars <- clin_vars[d_both,]
+
+
+
+
+
+
+
+
+## looking for cases of multi correlations
+pb <- pbmc_container[["scMinimal_ctype"]][["cMono"]][["pseudobulk"]]
+
+# using PCA
+pr_res <- prcomp(pb,center = FALSE,scale.=FALSE)
+donor_mat1 <- pr_res[["x"]]
+ldngs1 <- pr_res[["rotation"]]
+
+# or by using NMF
+col_m <- colMins(pb)
+pb <- sweep(pb,MARGIN=2,col_m,FUN='-')
+ndx_keep <- which(col_m!=0)
+pb <- pb[,ndx_keep]
+
+nmf_res <- NMF::nmf(pb,10)
+donor_mat1 <- nmf_res@fit@W
+ldngs1 <- nmf_res@fit@H
+
+pb <- pbmc_container[["scMinimal_ctype"]][["Th"]][["pseudobulk"]]
+
+# using PCA
+pr_res <- prcomp(pb,center = FALSE,scale.=FALSE)
+donor_mat2 <- pr_res[["x"]]
+ldngs2 <- pr_res[["rotation"]]
+
+# or by using NMF
+col_m <- colMins(pb)
+pb <- sweep(pb,MARGIN=2,col_m,FUN='-')
+ndx_keep <- which(col_m!=0)
+pb <- pb[,ndx_keep]
+
+nmf_res <- NMF::nmf(pb,10)
+donor_mat2 <- nmf_res@fit@W
+ldngs2 <- nmf_res@fit@H
+
+cormat <- cor(donor_mat1[,1:10],donor_mat2[rownames(donor_mat1),1:10])
+cormat <- cor(ldngs1[,1:10],ldngs2[rownames(ldngs1),1:10])
+# 
+# col_fun = colorRamp2(c(-1, 0, 1), c("blue", "white", "red"))
+# lds_hmap <- Heatmap(cormat, name = "Pearson r",
+#                     cluster_columns = TRUE,
+#                     cluster_rows = TRUE,
+#                     column_names_gp = gpar(fontsize = 10),
+#                     row_names_gp = gpar(fontsize = 10),
+#                     col = col_fun,border=TRUE, show_column_names=TRUE,
+#                     show_row_names=TRUE,show_row_dend = FALSE,
+#                     show_column_dend = FALSE, row_names_side = 'left',
+#                     cell_fun = function(j, i, x, y, width, height, fill) {
+#                       grid::grid.text(sprintf("%.2f", cormat[i, j]), x, y, gp = gpar(fontsize = 10))
+#                     })
+# lds_hmap
+
+# # compute and add metadata annotations for each pca
+# 
+# # load data of categorical variables
+# clin_vars <- read_excel('/home/jmitchel/data/lupus_data/SLE_meds_cleaned.xlsx')
+# clin_vars <- as.data.frame(clin_vars)
+# rownames(clin_vars) <- clin_vars[,'Sample ID']
+# 
+# dsc <- donor_mat1
+# trim_names <- sapply(rownames(dsc), function(x) {
+#   strsplit(x,split='_')[[1]][[1]]
+# })
+# 
+# trim_names <- trim_names[trim_names %in% rownames(clin_vars)]
+# tmp <- names(trim_names)
+# names(trim_names) <- NULL
+# clin_vars <- clin_vars[trim_names,] #order it correctly
+# rownames(clin_vars) <- tmp
+# 
+# clin_vars[is.na(clin_vars)] <- 0
+# 
+# # need to add the appropriate value to metadata of scMinimal_full
+# d_keep <- rownames(clin_vars)
+# pbmc_container$scMinimal_full$metadata <- pbmc_container$scMinimal_full$metadata[pbmc_container$scMinimal_full$metadata$donors %in% d_keep,]
+# pred_col <- sapply(1:nrow(pbmc_container$scMinimal_full$metadata), function(x){
+#   d <- as.character(pbmc_container$scMinimal_full$metadata$donors[x])
+#   return(clin_vars[d,'prednisone'])
+# })
+# pbmc_container$scMinimal_full$metadata$prednisone <- as.factor(pred_col)
+# 
+# 
+# ################################
+
+pbmc_container$tucker_results[[1]] <- donor_mat1[,1:10]
+
+pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('sex','prednisone'),
+                                        stat_use='pval')
+
+meta1 <- pbmc_container[["meta_associations"]]
+
+pbmc_container$tucker_results[[1]] <- donor_mat2[,1:10]
+
+pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('sex','prednisone'),
+                                        stat_use='pval')
+
+meta2 <- pbmc_container[["meta_associations"]]
+
+colnames(cormat) <- sapply(1:ncol(cormat),function(x){paste0('Factor ',as.character(x))})
+rownames(cormat) <- sapply(1:ncol(cormat),function(x){paste0('Factor ',as.character(x))})
+
+
+col_fun_annot = colorRamp2(c(0, -log10(.05), 10), c("white", "white", "forest green"))
+la <- rowAnnotation(rsq=t(-log10(meta1)),col = list(rsq = col_fun_annot),
+                    border=TRUE,annotation_name_side = "bottom")
+ba <- HeatmapAnnotation(rsq=t(-log10(meta2)),col = list(rsq = col_fun_annot),
+                        border=TRUE,annotation_name_side = "right",show_legend=FALSE)
+
+col_fun = colorRamp2(c(-1, 0, 1), c("blue", "white", "red"))
+lds_hmap <- Heatmap(cormat, name = "Pearson r",
+                    cluster_columns = F,
+                    cluster_rows = F,
+                    column_names_gp = gpar(fontsize = 10),
+                    row_names_gp = gpar(fontsize = 10),
+                    col = col_fun,border=TRUE, show_column_names=TRUE,
+                    show_row_names=TRUE,show_row_dend = FALSE,
+                    show_column_dend = FALSE, row_names_side = 'left',
+                    bottom_annotation=ba,
+                    left_annotation=la,
+                    row_title = 'cMono donor scores',
+                    column_title = 'Th donor scores',
+                    column_title_side = 'bottom',
+                    cell_fun = function(j, i, x, y, width, height, fill) {
+                      grid::grid.text(sprintf("%.2f", cormat[i, j]), x, y, gp = gpar(fontsize = 10))
+                    },
+                    width = unit(10, "cm"), height = unit(10, "cm"))
+
+pdf(file = "/home/jmitchel/figures/for_paper_v2/cMono_Th_compare_pca.pdf", useDingbats = FALSE,
+    width = 7, height = 7)
+lds_hmap
+dev.off()
+
+# pbmc_container <- plot_donor_matrix(pbmc_container,
+#                                     show_donor_ids = FALSE, meta_vars=c('sex','prednisone'),
+#                                     add_meta_associations='pval',show_var_explained = F)
+# 
+# pbmc_container$plots$donor_matrix
+
+
+
+
+## testing whether there are any residual gc content associations after batch correction
+pv <- test_gc_association(pbmc_container,my_factor=8,b_direc='up',comp_type='any_up')
 
 
 
@@ -1016,18 +1402,4 @@ dev.off()
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+                                                               

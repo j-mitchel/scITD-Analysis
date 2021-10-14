@@ -62,6 +62,10 @@ clin_vars <- clin_vars[,-ndx_rem]
 ####
 
 
+# ### to optionally use full names in clin_vars
+# rownames(clin_vars) <- old_names[rownames(clin_vars)]
+
+
 # # do enrichment tests
 # library(fgsea)
 # mypaths <- list()
@@ -836,8 +840,8 @@ colnames(tmp) <-  c('dscore','ln','dsdna')
 
 # remove rows that don't have dsdna==1
 tmp <- tmp[tmp$dsdna==1,]
-# window_size <- 21 #size I originally used
-window_size <- 17
+# window_size <- 17
+window_size <- 19
 stored_counts <- c()
 for (i in 1:(nrow(tmp)-window_size+1)) {
   tests <- tmp[i:(i+window_size-1),'ln']
@@ -867,7 +871,7 @@ dev.off()
 
 
 all_scores <- c()
-for (testndx in 1:1000) {
+for (testndx in 1:10000) {
   
   # shuffle donor scores
   for (j in 1:ncol(dsc)) {
@@ -875,9 +879,9 @@ for (testndx in 1:1000) {
   }
   
   # testing co-occurrance of LN and dsdna with factor 2
-  # tmp <- as.data.frame(cbind(dsc[,2],clin_vars[,'crflupusneph'],clin_vars[,'acrantidsdna']))
+  tmp <- as.data.frame(cbind(dsc[,2],clin_vars[,'crflupusneph'],clin_vars[,'acrantidsdna']))
   # tmp <- as.data.frame(cbind(dsc[,4],clin_vars[,'crflupusneph'],clin_vars[,'acrantidsdna']))
-  tmp <- as.data.frame(cbind(dsc[,2],clin_vars[,'crflupusneph'],clin_vars[,'acrantismith']))
+  # tmp <- as.data.frame(cbind(dsc[,2],clin_vars[,'crflupusneph'],clin_vars[,'acrantismith']))
   tmp <- tmp[order(tmp[,1],decreasing=TRUE),]
   colnames(tmp) <-  c('dscore','ln','dsdna')
   
@@ -1113,7 +1117,7 @@ ggplot(tmp,aes(x=dscore,y=cvar)) +
 
 
 ## remove outlier for lm
-tmp <- cbind.data.frame(dsc[,5],pred_dose[d_both,1])
+tmp <- cbind.data.frame(dsc[,3],pred_dose[d_both,1])
 colnames(tmp) <- c('dscore','cvar')
 row_max <- which(tmp$cvar==max(tmp$cvar))
 tmp2 <- tmp[-row_max,]
@@ -1353,6 +1357,8 @@ fmod <- glm(dsdna~ln+dscore, data=tmp, family = "binomial") ##"full" mod
 a_res <- anova(nmod, fmod, test = 'Chisq')
 pval <- a_res$`Pr(>Chi)`[2]
 pval
+
+
 
 
 

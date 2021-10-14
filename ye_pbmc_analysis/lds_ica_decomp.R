@@ -835,7 +835,7 @@ lds_ica <- myf[[2]]
 ## here I'm going to plot loadings values versus signed association p-values
 pbmc_container <- get_lm_pvals(pbmc_container)
 
-myfactor <- 9
+myfactor <- 2
 myf <- get_one_factor(pbmc_container,factor_select=myfactor)
 dsc <- myf[[1]]
 lds <- myf[[2]]
@@ -919,11 +919,19 @@ fstats_real <- mclapply(1:n_genes, function(i) {
       
       # testing getting pval instead of fstat
       x <- summary(lmres)
-      gene_res[[ctype]][[as.character(k)]] <- x$coefficients['fiber','Estimate']
+      print(i)
+      print(j)
+      print(k)
+      print('')
+      if (sum(tmp_fiber==0)==length(tmp_fiber)) {
+        gene_res[[ctype]][[as.character(k)]] <- 0
+      } else {
+        gene_res[[ctype]][[as.character(k)]] <- x$coefficients['fiber','Estimate']
+      }
     }
   }
   return(gene_res)
-}, mc.cores = ncores)
+},mc.cores = 10)
 
 names(fstats_real) <- tensor_data[[2]]
 

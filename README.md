@@ -1,4 +1,20 @@
-# scITD-Analysis
-Analysis of datasets using scITD package.
 
-See the package here for more details: https://github.com/kharchenkolab/scITD
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+# scITD Analysis
+
+This repository is used for reproducing all analysis included in our
+paper describing the scITD package. See the scITD package here for more
+details: <https://github.com/kharchenkolab/scITD>
+
+We use the renv package to ensure that the exact same packages are used
+each time the results are reproduced. To get started, you will first
+need to install renv.
+
+``` r
+install.packages('renv')
+```
+
+Next, clone this repository and open R in the R project in this folder.
+This can be done by clicking on the scITD-Analysis.Rproj file in this
+directory in RStudio.

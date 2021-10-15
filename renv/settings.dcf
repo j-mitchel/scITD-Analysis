@@ -1,4 +1,4 @@
-external.libraries:
+external.libraries: ssvd
 ignored.packages:
 package.dependency.fields: Imports, Depends, LinkingTo
 r.version:

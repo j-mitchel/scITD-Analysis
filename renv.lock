@@ -738,6 +738,13 @@
       "Repository": "CRAN",
       "Hash": "dc5f7a6598bb025d20d66bb758f12879"
     },
+    "boot": {
+      "Package": "boot",
+      "Version": "1.3-28",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "0baa960e3b49c6176a4f42addcbacc59"
+    },
     "brew": {
       "Package": "brew",
       "Version": "1.0-6",
@@ -800,6 +807,13 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "7fe204e42ae9addc35147f8a5a8739fb"
+    },
+    "class": {
+      "Package": "class",
+      "Version": "7.3-19",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "1593b7beb067c8381c0d24e38bd778e0"
     },
     "cli": {
       "Package": "cli",
@@ -1686,6 +1700,13 @@
       "Repository": "CRAN",
       "Hash": "41287f1ac7d28a92f0a286ed507928d3"
     },
+    "markdown": {
+      "Package": "markdown",
+      "Version": "1.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "61e4a10781dd00d7d81dd06ca9b94e95"
+    },
     "matrixStats": {
       "Package": "matrixStats",
       "Version": "0.60.0",
@@ -2330,6 +2351,13 @@
       "Repository": "CRAN",
       "Hash": "1ab2028f9597732e853f85b9b7ee0090"
     },
+    "sm": {
+      "Package": "sm",
+      "Version": "2.2-5.7",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "42ac7f93c02aaf21aa531083671ea850"
+    },
     "sna": {
       "Package": "sna",
       "Version": "2.6",
@@ -2570,6 +2598,13 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "ecf749a1b39ea72bd9b51b76292261f1"
+    },
+    "vioplot": {
+      "Package": "vioplot",
+      "Version": "0.3.7",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "9333253bda8b93a43c2f53587303a974"
     },
     "vipor": {
       "Package": "vipor",

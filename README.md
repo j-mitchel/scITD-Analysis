@@ -12,7 +12,7 @@ each time the results are reproduced. To get started, you will first
 need to install renv.
 
 ``` r
-install.packages('renv')
+devtools::install_version("renv", version = "0.14.0", repos = "http://cran.us.r-project.org")
 ```
 
 Next, clone this repository and open R in the R project in this folder.

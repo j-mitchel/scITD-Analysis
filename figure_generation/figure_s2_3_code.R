@@ -116,10 +116,10 @@ pbmc_container <- plot_donor_matrix(pbmc_container,
                                     show_donor_ids = FALSE,
                                     add_meta_associations='pval')
 
-pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_only_dscores2.pdf", useDingbats = FALSE,
-    width = 5, height = 6)
+# pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_only_dscores2.pdf", useDingbats = FALSE,
+#     width = 5, height = 6)
 pbmc_container$plots$donor_matrix
-dev.off()
+# dev.off()
 
 
 # get significant genes
@@ -346,6 +346,7 @@ dev.off()
 
 
 # co-occurrance of LN and dsdna with factor 2
+old_dsc <- dsc
 tmp <- as.data.frame(cbind(dsc[,2],clin_vars[,'crflupusneph'],clin_vars[,'acrantidsdna']))
 tmp <- tmp[order(tmp[,1],decreasing=TRUE),]
 colnames(tmp) <-  c('dscore','ln','dsdna')
@@ -406,6 +407,9 @@ for (testndx in 1:10000) {
 
 pval <- sum(all_scores>myfstat)/10000
 print(pval)
+
+dsc <- old_dsc
+
 
 
 
@@ -526,6 +530,149 @@ print(cor(tmp$sledai,tmp$dsc))
 
 
 
+
+
+##### testing factors against meds
+clin_vars <- read_excel('/home/jmitchel/data/lupus_data/SLE_meds_cleaned.xlsx')
+clin_vars <- as.data.frame(clin_vars)
+rownames(clin_vars) <- clin_vars[,'Sample ID']
+clin_vars[,'Sample ID'] <- NULL
+
+# make all NA into zeros, since no 0 are put in the table
+clin_vars[is.na(clin_vars)] <- 0
+
+# separate out pred dose as it's the only continuous variable here
+pred_dose <- clin_vars[,'pred_dose',drop=FALSE]
+clin_vars[,'pred_dose'] <- NULL
+
+# make sure there are no columns of all zeros
+colSums(clin_vars)
+
+# need to remove a few columns that have only 1 or 0 donors on the med
+clin_vars[,c('solumedrol','rx_abatacept','rx_cyclophosphamide','rx_etanercept',
+             'rx_IGG','rx_leflunomide','rx_rituximab','rx_sulfasalazine')] <- NULL
+
+# get tucker donor scores to test
+dsc <- pbmc_container$tucker_results[[1]]
+
+## get donors in both dsc and in clin_vars
+# trim donor IDs in dsc
+trim_names <- sapply(rownames(dsc), function(x) {
+  strsplit(x,split='_')[[1]][[1]]
+})
+names(trim_names) <- c()
+old_names <- rownames(dsc)
+names(old_names) <- trim_names
+rownames(dsc) <- trim_names
+
+# get donors in both dataframes
+d_both <- rownames(clin_vars)[rownames(clin_vars) %in% rownames(dsc)]
+
+# limit both dataframes to just the intersection of donors and in the same order
+dsc <- dsc[d_both,]
+clin_vars <- clin_vars[d_both,]
+
+all_pvals <- c()
+f_tested <- c()
+c_tested <- c()
+# loop through the variables to test
+for (j in 1:ncol(clin_vars)) {
+  print(j)
+  # loop through factors
+  for (f in 1:ncol(dsc)) {
+    # get donors in clin var that don't have an NA value
+    d_keep <- rownames(clin_vars)[!is.na(clin_vars[,j])]
+    
+    tmp <- as.data.frame(cbind(dsc[d_keep,f], clin_vars[d_keep,j]))
+    colnames(tmp) <- c('dscore','cvar')
+    
+    # force cvar to be factor
+    tmp$cvar <- as.factor(tmp$cvar)
+    
+    # trying with logistic regression model
+    fmod <- glm(cvar~dscore, data=tmp, family = "binomial") ##"full" mod
+    nmod <- glm(cvar~1, data=tmp, family = 'binomial') ##"null" mod
+    a_res <- anova(nmod, fmod, test = 'Chisq')
+    pval <- a_res$`Pr(>Chi)`[2]
+    
+    all_pvals <- c(all_pvals,pval)
+    f_tested <- c(f_tested,f)
+    c_tested <- c(c_tested,colnames(clin_vars)[j])
+  }
+}
+all_pvals <- p.adjust(all_pvals,method='fdr')
+all_pvals[order(all_pvals,decreasing=FALSE)]
+f_tested[order(all_pvals,decreasing=FALSE)]
+c_tested[order(all_pvals,decreasing=FALSE)]
+
+
+## now plotting the prednisone associations
+tmp <- cbind.data.frame(dsc[,3],clin_vars[,'prednisone'])
+colnames(tmp) <- c('dscore','cvar')
+tmp$cvar_word <- sapply(tmp$cvar,function(x){
+  if (x==1) {
+    return('On Prednisone')
+  } else {
+    return('Not on Prednisone')
+  }
+})
+tmp$cvar_word <- as.factor(tmp$cvar_word)
+
+pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_prednisone_binary2.pdf", useDingbats = FALSE,
+    width = 4.5, height = 3.5)
+ggplot(tmp,aes(x=cvar_word,y=dscore)) +
+  geom_violin() +
+  geom_dotplot(binaxis='y', stackdir='center', dotsize=.75, binwidth = .01) +
+  ylab('Factor 3 Donor Score') +
+  xlab('') +
+  coord_flip() +
+  theme_bw()
+dev.off()
+
+
+
+## remove outlier for lm
+tmp <- cbind.data.frame(dsc[,3],pred_dose[d_both,1])
+colnames(tmp) <- c('dscore','cvar')
+row_max <- which(tmp$cvar==max(tmp$cvar))
+tmp2 <- tmp[-row_max,]
+lmres <- lm(cvar~dscore,data=tmp2)
+summary(lmres)
+
+line_range <- seq(min(tmp$dscore),max(tmp$dscore),.001)
+line_dat <- c(line_range*lmres$coefficients[[2]] + lmres$coefficients[[1]])
+line_df <- cbind.data.frame(line_range,line_dat)
+colnames(line_df) <- c('myx','myy')
+
+# make plot with best fit line
+pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_prednisone_dose2.pdf", useDingbats = FALSE,
+    width = 6, height = 4)
+ggplot(tmp,aes(x=dscore,y=cvar)) +
+  geom_point(alpha = 0.3,pch=19,size=3) +
+  geom_line(data=line_df,aes(x=myx,y=myy)) +
+  xlab('Factor 3 Donor Score') +
+  ylab('Prednisone Dose (mg)') +
+  theme_classic() +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14))
+dev.off()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ##### getting enriched gene sets for factor 2
 # run gsea for a f2
 pbmc_container <- run_gsea_one_factor(pbmc_container, factor_select=2, method="fgsea", thresh=0.05,
@@ -570,21 +717,12 @@ dev.off()
 
 
 
-
-
 ## getting enriched gene sets for factor 3
 pbmc_container <- run_gsea_one_factor(pbmc_container, factor_select=3, method="fgsea", thresh=0.05,
                                       db_use=c("GO"))
-pdf(file = "/home/jmitchel/figures/test.pdf", useDingbats = FALSE,
-    width = 14, height = 7)
-plot_gsea_hmap_w_similarity(pbmc_container,factor_select=3,direc='down',thresh=.05,
+plot_gsea_hmap_w_similarity(pbmc_container,factor_select=3,direc='up',thresh=.05,
                             exclude_words=c('regulation','positive','negative'))
-dev.off()
-
-pdf(file = "/home/jmitchel/figures/test.pdf", useDingbats = FALSE,
-    width = 14, height = 14)
 plot_gsea_sub(pbmc_container,thresh=.05,clust_select=8)
-dev.off()
 
 ## sets to show on loading hmap
 gsets <- c('GOBP_RESPONSE_TO_HORMONE',
@@ -606,7 +744,7 @@ names(gset_cmap) <- gsets
 hm_list <- plot_select_sets(pbmc_container, 3, gsets, color_sets=gset_cmap, 
                             cl_rows=T, myfontsize=5, h_w=c(6,4.5))
 
-pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_f3_gsets.pdf", useDingbats = FALSE,
+pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_f3_gsets2.pdf", useDingbats = FALSE,
     width = 6, height = 5)
 hm_list
 dev.off()
@@ -614,58 +752,7 @@ dev.off()
 
 
 
-## now plotting the prednisone associations
-tmp <- cbind.data.frame(dsc[,3],clin_vars[,'prednisone'])
-colnames(tmp) <- c('dscore','cvar')
-tmp$cvar_word <- sapply(tmp$cvar,function(x){
-  if (x==1) {
-    return('On Prednisone')
-  } else {
-    return('Not on Prednisone')
-  }
-})
-tmp$cvar_word <- as.factor(tmp$cvar_word)
 
-pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_prednisone_binary.pdf", useDingbats = FALSE,
-    width = 4.5, height = 3.5)
-pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_prednisone_binary.pdf", useDingbats = FALSE,
-    width = 4, height = 2.75)
-ggplot(tmp,aes(x=cvar_word,y=dscore)) +
-  geom_violin() +
-  geom_dotplot(binaxis='y', stackdir='center', dotsize=.75, binwidth = .01) +
-  ylab('Factor 3 Donor Score') +
-  xlab('') +
-  coord_flip() +
-  theme_bw()
-dev.off()
-
-
-
-## remove outlier for lm
-tmp <- cbind.data.frame(dsc[,3],pred_dose[d_both,1])
-colnames(tmp) <- c('dscore','cvar')
-row_max <- which(tmp$cvar==max(tmp$cvar))
-tmp2 <- tmp[-row_max,]
-lmres <- lm(cvar~dscore,data=tmp2)
-summary(lmres)
-
-line_range <- seq(min(tmp$dscore),max(tmp$dscore),.001)
-line_dat <- c(line_range*lmres$coefficients[[2]] + lmres$coefficients[[1]])
-line_df <- cbind.data.frame(line_range,line_dat)
-colnames(line_df) <- c('myx','myy')
-
-# make plot with best fit line
-pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_prednisone_dose.pdf", useDingbats = FALSE,
-    width = 6, height = 4)
-ggplot(tmp,aes(x=dscore,y=cvar)) +
-  geom_point(alpha = 0.3,pch=19,size=3) +
-  geom_line(data=line_df,aes(x=myx,y=myy)) +
-  xlab('Factor 3 Donor Score') +
-  ylab('Prednisone Dose (mg)') +
-  theme_classic() +
-  theme(axis.text=element_text(size=12),
-        axis.title=element_text(size=14))
-dev.off()
 
 
 

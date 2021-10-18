@@ -2438,8 +2438,8 @@
       "RemoteRepo": "scITD",
       "RemoteUsername": "kharchenkolab",
       "RemoteRef": "HEAD",
-      "RemoteSha": "2ec73629b9969b5cb5230917f32ca56d29d3d814",
-      "Hash": "b94adc5913b115adc35f041ab8c0cfe5"
+      "RemoteSha": "8056dc4e1efdf8ad5b03724a59d37b4ab20fa29e",
+      "Hash": "263a53362b4b6461ffc2ae9d18a364f0"
     },
     "scales": {
       "Package": "scales",

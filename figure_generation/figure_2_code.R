@@ -2,6 +2,7 @@ library(scITD)
 library(Seurat)
 library(ggplot2)
 library(coda.base)
+library(RColorBrewer)
 
 # load up the subsetted dataset
 pbmc <- readRDS('/home/jmitchel/data/lupus_data/lupus_subsetted_seurat_v3.rds')
@@ -293,3 +294,30 @@ print(pval)
 
 
 
+
+
+
+
+
+
+##### plotting embedding of all cells from SLE dataset
+# conos object from embedding prep file
+con <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_conos2.rds')
+tmp <- con$plotGraph(alpha=0.1)
+mycolors <- brewer.pal(n = 9, name = "Set1")
+mycolors <- mycolors[c(1:5,7,9)]
+tmp <- tmp + theme(panel.grid.major = element_blank(),
+                   panel.grid.minor = element_blank(),
+                   panel.background = element_rect(colour = "black", size=1, fill=NA)) +
+  scale_color_manual(values=mycolors) +
+  scale_y_reverse() +
+  scale_x_reverse()
+# scale_color_brewer(palette="Set1")
+tmp$layers[[2]] <- NULL
+
+
+# pdf(file = "/home/jmitchel/figures/for_paper/lupus_embedding.pdf", useDingbats = FALSE,
+#     width = 7, height = 7)
+# saved a jpeg 550 x 400 dimensions
+tmp
+# dev.off()

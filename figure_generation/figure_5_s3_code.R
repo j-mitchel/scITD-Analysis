@@ -207,7 +207,7 @@ pbmc_container <- plot_donor_matrix(pbmc_container,
 pbmc_container$plots$donor_matrix
 
 
-# add conos object generated in embedding prep file
+# add conos object generated in embedding_prep.R file
 con <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_conos2.rds')
 pbmc_container$embedding <- con
 

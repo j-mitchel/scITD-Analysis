@@ -301,7 +301,7 @@ print(pval)
 
 
 ##### plotting embedding of all cells from SLE dataset
-# conos object from embedding prep file
+# conos object from embedding_prep.R file
 con <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_conos2.rds')
 tmp <- con$plotGraph(alpha=0.1)
 mycolors <- brewer.pal(n = 9, name = "Set1")

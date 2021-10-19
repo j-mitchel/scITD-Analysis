@@ -961,6 +961,13 @@
       "Repository": "CRAN",
       "Hash": "0514bd6a3e99a2a17145c97c1cfebb09"
     },
+    "covr": {
+      "Package": "covr",
+      "Version": "3.5.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "6d80a9fc3c0c8473153b54fa54719dfd"
+    },
     "cowplot": {
       "Package": "cowplot",
       "Version": "1.1.1",
@@ -1860,6 +1867,13 @@
       "Repository": "CRAN",
       "Hash": "340f0789cb2dcc816d9856d375c1df83"
     },
+    "modelr": {
+      "Package": "modelr",
+      "Version": "0.1.8",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "9fd59716311ee82cba83dc2826fc5577"
+    },
     "modeltools": {
       "Package": "modeltools",
       "Version": "0.2-23",
@@ -2304,6 +2318,13 @@
       "Repository": "CRAN",
       "Hash": "30ab0ea8c8d3dd16a3fa06903449bbfb"
     },
+    "rex": {
+      "Package": "rex",
+      "Version": "1.2.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "093584b944440c5cd07a696b3c8e0e4c"
+    },
     "rio": {
       "Package": "rio",
       "Version": "0.5.27",
@@ -2380,6 +2401,13 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "6e30dc641aa3cd710cf0ff0c6fdf2e66"
+    },
+    "rstan": {
+      "Package": "rstan",
+      "Version": "2.21.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "52772d81aa532a6331fd535701882c12"
     },
     "rstatix": {
       "Package": "rstatix",
@@ -2486,6 +2514,13 @@
       "Version": "1.2.1",
       "Source": "Bioconductor",
       "Hash": "fe0aba650f4e94fa5f30212956cdd856"
+    },
+    "selectr": {
+      "Package": "selectr",
+      "Version": "0.4-2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "3838071b66e0c566d55cc26bd6e27bf4"
     },
     "sessioninfo": {
       "Package": "sessioninfo",

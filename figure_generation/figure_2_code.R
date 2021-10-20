@@ -133,18 +133,19 @@ pbmc_container <- plot_loadings_annot(pbmc_container, factor_select=1, use_sig_o
 hm_list <- plot_select_sets(pbmc_container, 1, gsets, color_sets=gset_cmap, 
                             cl_rows=F, myfontsize=6.5, h_w=c(6,6.5))
 
-p1 <- pbmc_container$plots$all_lds_plots[['1']]
-p2 <- p1 %v% hm_list[[1]]
-
-pd <- pbmc_container[["plots"]][["all_legends"]][["1"]]
-
-pdf(file = "/home/jmitchel/figures/for_paper_v2/lupus_f1_lds_go2.pdf", useDingbats = FALSE,
-    width = 12, height = 10)
-draw(p2,annotation_legend_list = pd,
-     legend_grouping = "original", annotation_legend_side = "left",
-     heatmap_legend_list = hm_list[[2]], heatmap_legend_side = "left",
-     newpage=TRUE, auto_adjust = FALSE)
-dev.off()
+## can only combine the two plots with dev version of complex heatmap
+# p1 <- pbmc_container$plots$all_lds_plots[['1']]
+# p2 <- p1 %v% hm_list[[1]]
+# 
+# pd <- pbmc_container[["plots"]][["all_legends"]][["1"]]
+# 
+# pdf(file = "/home/jmitchel/figures/for_paper_v2/lupus_f1_lds_go2.pdf", useDingbats = FALSE,
+#     width = 12, height = 10)
+# draw(p2,annotation_legend_list = pd,
+#      legend_grouping = "original", annotation_legend_side = "left",
+#      heatmap_legend_list = hm_list[[2]], heatmap_legend_side = "left",
+#      newpage=TRUE, auto_adjust = FALSE)
+# dev.off()
 
 
 

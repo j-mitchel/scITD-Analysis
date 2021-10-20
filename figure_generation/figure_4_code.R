@@ -121,7 +121,7 @@ modules <- c(5)
 # using more stringent p-val threshold for figure plot
 # mod_enr <- plot_multi_module_enr(pbmc_container, ctypes, modules, sig_thresh=.002, db_use=c('GO'),max_plt_pval=.002,h_w=c(7,3))
 mod_enr <- plot_multi_module_enr(pbmc_container, ctypes, modules, sig_thresh=.005, 
-                                 db_use=c('GO','BioCarta','KEGG'),max_plt_pval=.005,h_w=c(14,2))
+                                 db_use=c('GO','BioCarta'),max_plt_pval=.005,h_w=c(14,2))
 
 pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_ICOSLG_gsets2.pdf", useDingbats = FALSE,
     width = 5, height = 8)
@@ -131,9 +131,9 @@ dev.off()
 # also checking the enrichment of the TNFSF13B B module
 ctypes <- c('B')
 modules <- c(1)
-mod_enr <- plot_multi_module_enr(pbmc_container, ctypes, modules, sig_thresh=.01, 
-                                 db_use=c('GO','Reactome','KEGG','BioCarta'),
-                                 max_plt_pval=.01,h_w=c(15,5))
+mod_enr <- plot_multi_module_enr(pbmc_container, ctypes, modules, sig_thresh=.05, 
+                                 db_use=c('GO','Reactome','KEGG'),
+                                 max_plt_pval=.05,h_w=c(20,5))
 mod_enr
 
 

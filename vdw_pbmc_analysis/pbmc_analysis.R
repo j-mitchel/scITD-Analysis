@@ -586,8 +586,62 @@ pbmc_meta2 <- rbind.data.frame(pbmc_meta,s13_meta)
 
 
 
+### testing that a bunch of my old functions still work
+pbmc_container <- determine_ranks_tucker(pbmc_container, max_ranks_test=c(10,15,5),
+                                         shuffle_level='tensor', shuffle_within=NULL,
+                                         num_iter=10, batch_var=NULL,
+                                         norm_method='trim',
+                                         scale_factor=10000,
+                                         scale_var=TRUE,
+                                         var_scale_power=1.5)
+
+pbmc_container$plots$rank_determination_plot
 
 
+pbmc_container <- determine_ranks_tucker(pbmc_container, max_ranks_test=c(10,15,5),
+                                         shuffle_level='cells', 
+                                         num_iter=10, 
+                                         norm_method='trim',
+                                         scale_factor=10000,
+                                         scale_var=TRUE,
+                                         var_scale_power=1.5)
+
+pbmc_container$plots$rank_determination_plot
+
+
+pbmc_container <- get_num_batch_ranks(pbmc_container, c(5:10), 10, 'lanes', thresh=0.5,
+  tucker_type='regular',rotation_type='hybrid')
+pbmc_container$plots$num_batch_factors
+
+pbmc_container <- plot_donor_sig_genes(pbmc_container, factor_select=1, top_n_per_ctype=5,
+                     ctypes_use=NULL, show_donor_labels=FALSE,
+                     additional_meta='sex', add_genes=NULL)
+
+pbmc_container$plots$donor_sig_genes[["1"]]
+
+pbmc_container <- plot_scores_by_meta(pbmc_container,'sex')
+pbmc_container$plots$indv_meta_scores_associations
+
+enr_fig <- plot_dscore_enr(pbmc_container,factor_use=2,meta_var='sex')
+enr_fig
+
+pbmc_container <- compare_factors(pbmc_container, f_compare=c(1,2), direction=c('up','down'), compare_type='different',
+                sig_thresh=0.05)
+
+pbmc_container$plots$comparisons['1_2']
+
+
+
+pth <- get_intersecting_pathways(pbmc_container, factor_select=1, 
+                                 these_ctypes_only=c('cMono','Th'), up_down='down', thresh=0.05)
+
+
+
+
+pbmc_container <- form_tensor(pbmc_container, donor_min_cells=5,
+                              norm_method='trim', scale_factor=10000,
+                              vargenes_method='anova', vargenes_thresh=.05,
+                              scale_var = TRUE, var_scale_power = 1.5)
 
 
 

@@ -2431,15 +2431,15 @@
     },
     "scITD": {
       "Package": "scITD",
-      "Version": "0.1.0",
+      "Version": "1.0.0",
       "Source": "GitHub",
       "RemoteType": "github",
       "RemoteHost": "api.github.com",
       "RemoteRepo": "scITD",
       "RemoteUsername": "kharchenkolab",
       "RemoteRef": "HEAD",
-      "RemoteSha": "8056dc4e1efdf8ad5b03724a59d37b4ab20fa29e",
-      "Hash": "263a53362b4b6461ffc2ae9d18a364f0"
+      "RemoteSha": "17b2df80bce3f48e456d0cb0a06df64f06ab98d1",
+      "Hash": "82d8088499ce04b9feefbcd72630e543"
     },
     "scales": {
       "Package": "scales",

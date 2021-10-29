@@ -4,7 +4,7 @@ library(ggplot2)
 library(coda.base)
 library(RColorBrewer)
 
-# load up the subsetted dataset
+# load up the subsetted dataset: see preprocessing/lupus_preprocessing.R for code used to generate this object
 pbmc <- readRDS('/home/jmitchel/data/lupus_data/lupus_subsetted_seurat_v3.rds')
 
 # converting shorthand cell type

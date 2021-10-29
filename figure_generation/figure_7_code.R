@@ -3,6 +3,7 @@ library(Seurat)
 library(RColorBrewer)
 library(ggplot2)
 
+# load up covid PBMC dataset: see preprocessing/covid_uk_preprocessing.ipynb for code used to generate this object
 pbmc <- readRDS(file="/home/jmitchel/data/covid_data_uk/haniffa21_subset.rds")
 
 # remove the patient with malignant cells

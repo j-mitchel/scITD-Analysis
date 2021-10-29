@@ -2,6 +2,7 @@ library(scITD)
 library(ComplexHeatmap)
 
 ##### starting with PBMC dataset from van der Wijst et. al (2018)
+### see preprocessing/vdw_preprocessing.R for code used to generate the follwing objects
 # counts matrix
 pbmc_counts <- readRDS('/home/jmitchel/data/van_der_wijst/pbmc_counts_v2.rds')
 

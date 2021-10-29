@@ -89,7 +89,7 @@ pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('sex'),
 #                                     add_meta_associations=TRUE)
 pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex','lanes'),
                                     show_donor_ids = FALSE,
-                                    cluster_by_meta='sex',
+                                    cluster_by_meta='lanes',
                                     add_meta_associations=TRUE)
 # pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('lanes'),
 #                                     show_donor_ids = TRUE,
@@ -642,6 +642,42 @@ pbmc_container <- form_tensor(pbmc_container, donor_min_cells=5,
                               norm_method='trim', scale_factor=10000,
                               vargenes_method='anova', vargenes_thresh=.05,
                               scale_var = TRUE, var_scale_power = 1.5)
+
+
+
+
+
+## retesting all my prop analysis functions
+pbmc_container <- get_subtype_prop_associations(pbmc_container,max_res=1,'adj_pval',integration_var='lanes')
+pbmc_container$plots$subtype_prop_factor_associations
+
+
+pbmc_container <- get_ctype_prop_associations(pbmc_container,'adj_pval',n_col=2)
+pbmc_container$plots$ctype_prop_factor_associations
+
+pbmc_container <- get_ctype_subc_prop_associations(pbmc_container,ctype='Th',res=.6,n_col=2,alt_name=NULL)
+pbmc_container$plots$ctype_prop_factor_associations
+
+pbmc_container$experiment_params$ncores <- 5
+all_ctypes <- pbmc_container$experiment_params$ctypes_use
+all_res <- rep(.6,length(all_ctypes))
+pbmc_container <- get_subclust_enr_fig(pbmc_container,all_ctypes,all_res)
+pbmc_container$plots$subc_fig # added automatic generation of UMAPs
+
+get_indv_subtype_associations #fixed bug here. This used in get_subclust_enr_hmap which is used in get_subclust_enr_fig
+compute_associations
+
+# removed unused bplot fn
+
+# need to fix bug in below when ctype_cur doesn't need to be set...
+subc_fig <- get_subclust_enr_dotplot(pbmc_container,ctype='Th',res=.6,
+                                           subtype=4,factor_use=1)
+subc_fig
+
+
+
+
+
 
 
 

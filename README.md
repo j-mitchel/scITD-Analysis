@@ -18,3 +18,11 @@ devtools::install_version("renv", version = "0.14.0", repos = "http://cran.us.r-
 Next, clone this repository and open R in the R project in this folder.
 This can be done by clicking on the scITD-Analysis.Rproj file in this
 directory in RStudio.
+
+Finally, you can install the packages used in this analysis using the following. This
+will store the updated packages in the project library, not affecting your user library.
+
+``` r
+renv::restore()
+```
+

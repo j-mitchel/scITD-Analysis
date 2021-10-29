@@ -227,7 +227,8 @@ lds_hmap
 
 
 ##### soup analysis and gc content analysis
-# read in soup profile for a batch
+# read in soup profile for batch YE_7-19
+# this was generated using files preprocessing/droplet_preprocessing.R and preprocessing/SLE_pool_preprocessing.ipynb
 soupProf <- readRDS(file="/home/jmitchel/data/lupus_data/SLE_droplets/YE_7-19/soupProf.rds")
 
 test_soup_association <- function(container,my_factor,b_direc,comp_type='any_up',soupProf) {

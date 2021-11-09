@@ -123,8 +123,8 @@ modules <- c(5)
 mod_enr <- plot_multi_module_enr(pbmc_container, ctypes, modules, sig_thresh=.005, 
                                  db_use=c('GO','BioCarta'),max_plt_pval=.005,h_w=c(14,2))
 
-pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_ICOSLG_gsets2.pdf", useDingbats = FALSE,
-    width = 5, height = 8)
+# pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_ICOSLG_gsets2.pdf", useDingbats = FALSE,
+#     width = 5, height = 8)
 mod_enr
 dev.off()
 
@@ -591,6 +591,102 @@ combined_plt
 
 
 
+
+
+
+
+
+
+
+
+
+
+##### testing for association between Treg proportions and F3
+pbmc_container$subclusters <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_subcluster_data.rds')
+t4_sub <- colnames(pbmc_container$scMinimal_ctype[['Th']]$count_data)
+
+tmp <- pbmc@meta.data[t4_sub,'ct_cov']
+
+ndx_mark <- which(tmp=='T4reg')
+ndx_other <- which(tmp!='T4reg')
+
+tmp <- as.character(tmp)
+tmp[ndx_mark] <- 1
+tmp[ndx_other] <- 2
+
+pbmc_container[["subclusters"]][["T4"]][["res:0.6"]] <- as.numeric(tmp)
+names(pbmc_container[["subclusters"]][["T4"]][["res:0.6"]]) <- t4_sub
+
+ctype <- 'T4'
+res <- 0.6
+subtype=1
+factor_use=3
+ctype_cur='Th'
+
+resolution_name <- paste0('res:',as.character(res))
+subclusts <- pbmc_container$subclusters[[ctype]][[resolution_name]]
+
+# append large cell type name to subclusters
+subclusts <- sapply(subclusts,function(x){paste0(ctype,'_',x)})
+
+# limit cells in subclusts to those that we actually have scores for
+donor_scores <- pbmc_container$tucker_results[[1]]
+cell_intersect <- intersect(names(subclusts),rownames(pbmc_container$scMinimal_full$metadata))
+donor_vec <- pbmc_container$scMinimal_full$metadata[cell_intersect,'donors']
+subclusts <- subclusts[cell_intersect]
+subclusts <- subclusts[donor_vec %in% rownames(donor_scores)]
+
+# make subtype association plot
+subclusts_num <- sapply(subclusts,function(x){as.numeric(strsplit(x,split="_")[[1]][[2]])})
+scMinimal <- pbmc_container$scMinimal_ctype[[ctype_cur]]
+sub_meta_tmp <- scMinimal$metadata[names(subclusts),]
+
+# get donor proportions of subclusters
+donor_props <- compute_donor_props(subclusts_num,sub_meta_tmp)
+donor_props <- donor_props[,subtype,drop=FALSE]
+colnames(donor_props) <- 'prop'
+
+# append dscores for factor 1
+donor_props2 <- cbind(donor_props,donor_scores[rownames(donor_props),factor_use])
+colnames(donor_props2)[ncol(donor_props2)] <- 'dsc'
+
+donor_props2 <- as.data.frame(donor_props2)
+donor_props2$dsc <- as.numeric(donor_props2$dsc)
+donor_props2$prop <- as.numeric(donor_props2$prop)
+
+lmres <- lm(prop~dsc,data=donor_props2)
+line_range <- seq(min(donor_props2$dsc),max(donor_props2$dsc),.001)
+line_dat <- c(line_range*lmres$coefficients[[2]] + lmres$coefficients[[1]])
+line_df <- cbind.data.frame(line_range,line_dat)
+colnames(line_df) <- c('myx','myy')
+
+p <- ggplot(donor_props2,aes(x=dsc,y=prop)) +
+  geom_point(alpha = 0.75,pch=19,size=2) +
+  geom_line(data=line_df,aes(x=myx,y=myy)) +
+  xlab(paste0('Factor ',as.character(factor_use),' Donor Score')) +
+  ylab(paste0('Proportion Treg/Th')) +
+  ylim(0,1) +
+  ggtitle(paste0(ctype,'_',as.character(subtype),' Proportions')) +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=14)) +
+  ylim(0,.25) + ggtitle('')
+
+p
+dev.off()
+
+donor_props <- compute_donor_props(subclusts_num,sub_meta_tmp)
+donor_balances <- coda.base::coordinates(donor_props)
+rownames(donor_balances) <- rownames(donor_props)
+
+f1 <- get_one_factor(pbmc_container,3)
+f1_dsc <- f1[[1]]
+tmp <- cbind.data.frame(f1_dsc[rownames(donor_balances),1,drop=FALSE],donor_balances)
+colnames(tmp) <- c('dsc','my_balance')
+lmres <- summary(lm(my_balance~dsc,data=tmp))
+pval <- stats::pf(lmres$fstatistic[1],lmres$fstatistic[2],lmres$fstatistic[3],lower.tail=FALSE)
+print(pval)
 
 
 

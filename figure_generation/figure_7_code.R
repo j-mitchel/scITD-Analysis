@@ -104,6 +104,8 @@ pbmc_container <- plot_donor_matrix(pbmc_container,
 pbmc_container$plots$donor_matrix
 # dev.off()
 
+# get significant genes
+pbmc_container <- get_lm_pvals(pbmc_container)
 
 
 

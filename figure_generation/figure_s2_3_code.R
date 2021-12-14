@@ -62,7 +62,9 @@ pbmc_container_full <- form_tensor(pbmc_container_full, donor_min_cells=20,
 pbmc_container_full <- run_tucker_ica(pbmc_container_full, ranks=c(7,20),
                                  tucker_type = 'regular', rotation_type = 'hybrid')
 
-
+# flip sign of F1 so high ISG expression is positive instead of negative (signs are arbitrary)
+pbmc_container_full$tucker_results[[1]][,1] <- pbmc_container_full$tucker_results[[1]][,1] * -1
+pbmc_container_full$tucker_results[[2]][1,] <- pbmc_container_full$tucker_results[[2]][1,] * -1
 
 
 
@@ -108,6 +110,10 @@ pbmc_container <- form_tensor(pbmc_container, donor_min_cells=20,
 pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(7,20),
                                  tucker_type = 'regular', rotation_type = 'hybrid')
 
+# flip sign of F1 so high ISG expression is positive instead of negative (signs are arbitrary)
+pbmc_container$tucker_results[[1]][,1] <- pbmc_container$tucker_results[[1]][,1] * -1
+pbmc_container$tucker_results[[2]][1,] <- pbmc_container$tucker_results[[2]][1,] * -1
+
 pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('sex','Age','pool','processing','Ethnicity'),
                                         stat_use='pval')
 
@@ -116,7 +122,7 @@ pbmc_container <- plot_donor_matrix(pbmc_container,
                                     show_donor_ids = FALSE,
                                     add_meta_associations='pval')
 
-# pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_only_dscores2.pdf", useDingbats = FALSE,
+# pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_only_dscores3.pdf", useDingbats = FALSE,
 #     width = 5, height = 6)
 pbmc_container$plots$donor_matrix
 # dev.off()
@@ -152,8 +158,8 @@ pbmc_container <- plot_loadings_annot(pbmc_container, factor_select=7, use_sig_o
 # render them together because it's easier for the final figure
 myfig <- render_multi_plots(pbmc_container,data_type='loadings',max_cols=4)
 
-pdf(file = "/home/jmitchel/figures/for_paper_v2/lds_all2.pdf", useDingbats = FALSE,
-    width = 15, height = 18)
+# pdf(file = "/home/jmitchel/figures/for_paper_v2/lds_all3.pdf", useDingbats = FALSE,
+#     width = 15, height = 18)
 myfig
 dev.off()
 
@@ -167,7 +173,7 @@ tr_sle <- pbmc_container$tucker_results
 
 tr_full <- pbmc_container_full$tucker_results # after re-running full decomp
 
-pdf(file = "/home/jmitchel/figures/for_paper_v2/decomp_comparison2.pdf", useDingbats = FALSE,
+pdf(file = "/home/jmitchel/figures/for_paper_v2/decomp_comparison3.pdf", useDingbats = FALSE,
     width = 8, height = 4.5)
 compare_decompositions(tr_sle,tr_full,c('SLE only','Full dataset',use_text=TRUE))
 dev.off()
@@ -303,11 +309,11 @@ tmp$cvar_word <- sapply(tmp$cvar,function(x){
 })
 tmp$cvar_word <- as.factor(tmp$cvar_word)
 
-pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_antidsdna2.pdf", useDingbats = FALSE,
-    width = 3.75, height = 2.75)
+# pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_antidsdna3.pdf", useDingbats = FALSE,
+#     width = 3.75, height = 2.75)
 ggplot(tmp,aes(x=cvar_word,y=dscore)) +
   geom_violin() +
-  geom_dotplot(binaxis='y', stackdir='center', dotsize=.75, binwidth = .01) +
+  geom_dotplot(binaxis='y', stackdir='center', dotsize=1.25, binwidth = .01) +
   ylab('Factor 1 Donor Score') +
   xlab('') +
   coord_flip() +
@@ -333,11 +339,11 @@ tmp$cvar_word <- sapply(tmp$cvar,function(x){
 })
 tmp$cvar_word <- as.factor(tmp$cvar_word)
 
-pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_antismith2.pdf", useDingbats = FALSE,
-    width = 3.75, height = 2.75)
+# pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_antismith3.pdf", useDingbats = FALSE,
+#     width = 3.75, height = 2.75)
 ggplot(tmp,aes(x=cvar_word,y=dscore)) +
   geom_violin() +
-  geom_dotplot(binaxis='y', stackdir='center', dotsize=.75, binwidth = .01) +
+  geom_dotplot(binaxis='y', stackdir='center', dotsize=1.25, binwidth = .01) +
   ylab('Factor 1 Donor Score') +
   xlab('') +
   coord_flip() +
@@ -484,8 +490,8 @@ line_dat <- c(line_range*lmres$coefficients[[2]] + lmres$coefficients[[1]])
 line_df <- cbind.data.frame(line_range,line_dat)
 colnames(line_df) <- c('myx','myy')
 
-pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_sledai2.pdf", useDingbats = FALSE,
-    width = 3.75, height = 3)
+# pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_sledai3.pdf", useDingbats = FALSE,
+#     width = 3.75, height = 3)
 ggplot(tmp,aes(x=dscore,y=cvar)) +
   geom_point(alpha = 0.25,pch=19,size=3) +
   geom_line(data=line_df,aes(x=myx,y=myy)) +

@@ -61,6 +61,10 @@ pbmc_container <- form_tensor(pbmc_container, donor_min_cells=20,
 pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(7,20),
                                  tucker_type = 'regular', rotation_type = 'hybrid')
 
+# flip sign of F1 so high ISG expression is positive instead of negative (signs are arbitrary)
+pbmc_container$tucker_results[[1]][,1] <- pbmc_container$tucker_results[[1]][,1] * -1
+pbmc_container$tucker_results[[2]][1,] <- pbmc_container$tucker_results[[2]][1,] * -1
+
 # get factor-meta data associations
 pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('sex','Age','pool','processing','Status','Ethnicity'),
                                         stat_use='pval')
@@ -71,7 +75,7 @@ pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('sex'),
                                     show_donor_ids = FALSE,
                                     add_meta_associations='pval')
 
-# pdf(file = "/home/jmitchel/figures/for_paper_v2/lupus_dscores_full2.pdf", useDingbats = FALSE,
+# pdf(file = "/home/jmitchel/figures/for_paper_v2/lupus_dscores_full3.pdf", useDingbats = FALSE,
 #     width = 6, height = 7)
 pbmc_container$plots$donor_matrix
 dev.off()
@@ -123,15 +127,22 @@ names(gset_cmap) <- gsets
 gset_cmap_sub <- gset_cmap[gset_cmap!='black']
 gset_sub <- names(gset_cmap_sub)
 
+pdf(file = "/home/jmitchel/figures/for_paper_v2/lupus_f1_lds3.pdf", useDingbats = FALSE,
+    width = 12, height = 7)
 pbmc_container <- plot_loadings_annot(pbmc_container, factor_select=1, use_sig_only=TRUE, nonsig_to_zero=TRUE, annot='none',
                                       pathways=NULL, sim_de_donor_group=NULL, sig_thresh=0.01, display_genes=FALSE,
                                       gene_callouts=FALSE, callout_n_gene_per_ctype=5, callout_ctypes=NULL, 
                                       le_set_callouts=gset_sub, le_set_colormap=gset_cmap_sub, le_set_num_per=7, show_le_legend=FALSE,
                                       show_xlab=TRUE, show_var_explained=TRUE, reset_other_factor_plots=FALSE, draw_plot=TRUE,
                                       clust_method='mcquitty', h_w=c(9,6.5))
+dev.off()
 
 hm_list <- plot_select_sets(pbmc_container, 1, gsets, color_sets=gset_cmap, 
                             cl_rows=F, myfontsize=6.5, h_w=c(6,6.5))
+pdf(file = "/home/jmitchel/figures/for_paper_v2/lupus_f1_go.pdf", useDingbats = FALSE,
+    width = 12, height = 5)
+hm_list
+dev.off()
 
 ## can only combine the two plots with dev version of complex heatmap
 # p1 <- pbmc_container$plots$all_lds_plots[['1']]
@@ -177,7 +188,7 @@ ifi6_dot <- ggplot(tmp,aes(x=dscore,y=expres,color=status)) +
   xlab('Factor 1 donor scores') +
   theme_bw()
 
-pdf(file = "/home/jmitchel/figures/for_paper_v2/f1_IFN_status2.pdf", useDingbats = FALSE,
+pdf(file = "/home/jmitchel/figures/for_paper_v2/f1_IFN_status3.pdf", useDingbats = FALSE,
     width = 5, height = 2.75)
 ifi6_dot
 dev.off()
@@ -260,6 +271,8 @@ line_df <- cbind.data.frame(line_range,line_dat)
 line_df <- cbind.data.frame(line_df,rep('1',nrow(line_df)))
 colnames(line_df) <- c('myx','myy','Status')
 
+mycol <- RColorBrewer::brewer.pal(n = 6, name = "Dark2")
+
 p <- ggplot(donor_props2,aes(x=dsc,y=prop,color=Status)) +
   geom_point(alpha = 0.75,pch=19,size=2) +
   geom_line(data=line_df,aes(x=myx,y=myy)) +
@@ -275,7 +288,7 @@ p <- ggplot(donor_props2,aes(x=dsc,y=prop,color=Status)) +
         axis.title=element_text(size=14)) +
   ylim(0,.25) + ggtitle('')
 
-pdf(file = "/home/jmitchel/figures/for_paper_v2/Treg_props2.pdf", useDingbats = FALSE,
+pdf(file = "/home/jmitchel/figures/for_paper_v2/Treg_props3.pdf", useDingbats = FALSE,
     width = 5, height = 3.25)
 p
 dev.off()
@@ -411,7 +424,7 @@ print(pval)
 
 
 
-##### plotting embedding of all cells from SLE dataset
+##### plotting umap embedding of all cells from SLE dataset
 # conos object from embedding_prep.R file
 con <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_conos2.rds')
 tmp <- con$plotGraph(alpha=0.1)
@@ -432,3 +445,36 @@ tmp$layers[[2]] <- NULL
 # saved a jpeg 550 x 400 dimensions
 tmp
 # dev.off()
+
+
+## make umap showing subtype annotations
+c_use <- names(con$clusters$leiden$groups)
+con$clusters$leiden$groups <- pbmc@meta.data[c_use,'ct_cov']
+names(con$clusters$leiden$groups) <- c_use
+tmp <- con$plotGraph(alpha=0.1)
+# mycolors <- brewer.pal(n = 9, name = "Set1")
+mycolors <- c(brewer.pal(n = 5, name = "Set1"),brewer.pal(n = 8, name = "Set2"))
+# mycolors <- mycolors[c(1:5,7,9)]
+tmp <- tmp + theme(panel.grid.major = element_blank(),
+                   panel.grid.minor = element_blank(),
+                   panel.background = element_rect(colour = "black", size=1, fill=NA)) +
+  scale_color_manual(values=mycolors) +
+  scale_y_reverse() +
+  scale_x_reverse()
+# scale_color_brewer(palette="Set1")
+tmp$layers[[2]] <- NULL
+
+# saved a jpeg 550 x 400 dimensions
+tmp
+# dev.off()
+
+
+
+## batch factor associations in other file
+
+
+
+
+
+
+

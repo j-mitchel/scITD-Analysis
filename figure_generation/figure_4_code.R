@@ -102,16 +102,31 @@ lr_hmap
 
 
 lig_mod_fact <- plot_mod_and_lig(pbmc_container,factor_select=2,mod_ct='Th',mod=5,lig_ct='cMono',lig='ICOSLG')
-pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_ICOSLG_trio2.pdf", useDingbats = FALSE,
-    width = 6, height = 5)
+# pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_ICOSLG_trio2.pdf", useDingbats = FALSE,
+#     width = 6, height = 5)
 lig_mod_fact
 dev.off()
 
 lig_mod_fact <- plot_mod_and_lig(pbmc_container,factor_select=1,mod_ct='B',mod=1,lig_ct='cMono',lig='TNFSF13B')
-pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_TNFSF13B_trio2.pdf", useDingbats = FALSE,
-    width = 6, height = 5)
+# pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_TNFSF13B_trio3.pdf", useDingbats = FALSE,
+#     width = 6, height = 5)
 lig_mod_fact
 dev.off()
+
+
+## extracting the pvalues for these two...
+# running code within the compute_LR_interact fn
+sig_thresh=.0000001
+myres_mat <- pbmc_container$lr_res # at 285
+container=pbmc_container
+
+pbmc_container$lr_res['ICOSLG_cMono_ICOS','Th_m5']
+which(rownames(myres_mat)=='ICOSLG_cMono_ICOS')
+10**(-fact_res2[47,2])
+
+pbmc_container$lr_res['TNFSF13B_cMono_TNFRSF13B','B_m1']
+which(rownames(myres_mat)=='TNFSF13B_cMono_TNFRSF13B')
+10**(-fact_res2[39,1])
 
 
 # getting GO enrichment HMAPs for modules

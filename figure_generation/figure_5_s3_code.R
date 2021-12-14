@@ -430,44 +430,44 @@ dev.off()
 # These pvalues are found in pbmc_container$subc_factor_association_res and are the ones that appear in the final figure.
 
 pbmc_container <- get_ctype_subc_prop_associations(pbmc_container,ctype='Th',res=.6,n_col=2,alt_name='T4')
-pdf(file = "/home/jmitchel/figures/for_paper_v2/Th_subc2.pdf", useDingbats = FALSE,
+pdf(file = "/home/jmitchel/figures/for_paper_v2/Th_subc3.pdf", useDingbats = FALSE,
     width = 8, height = 8)
 pbmc_container$plots$ctype_prop_factor_associations
 dev.off()
 
 pbmc_container <- get_ctype_subc_prop_associations(pbmc_container,ctype='cMono',res=.5,n_col=2,alt_name='cM')
-pdf(file = "/home/jmitchel/figures/for_paper_v2/cMono_subc2.pdf", useDingbats = FALSE,
+pdf(file = "/home/jmitchel/figures/for_paper_v2/cMono_subc3.pdf", useDingbats = FALSE,
     width = 8, height = 8)
 pbmc_container$plots$ctype_prop_factor_associations
 dev.off()
 
 pbmc_container <- get_ctype_subc_prop_associations(pbmc_container,ctype='NK',res=.6,n_col=2)
-pdf(file = "/home/jmitchel/figures/for_paper_v2/NK_subc2.pdf", useDingbats = FALSE,
+pdf(file = "/home/jmitchel/figures/for_paper_v2/NK_subc3.pdf", useDingbats = FALSE,
     width = 8, height = 8)
 pbmc_container$plots$ctype_prop_factor_associations
 dev.off()
 
 pbmc_container <- get_ctype_subc_prop_associations(pbmc_container,ctype='Tc',res=.6,n_col=2,alt_name='T8')
-pdf(file = "/home/jmitchel/figures/for_paper_v2/Tc_subc2.pdf", useDingbats = FALSE,
+pdf(file = "/home/jmitchel/figures/for_paper_v2/Tc_subc3.pdf", useDingbats = FALSE,
     width = 8, height = 8)
 pbmc_container$plots$ctype_prop_factor_associations
 dev.off()
 
 
 pbmc_container <- get_ctype_subc_prop_associations(pbmc_container,ctype='ncMono',res=.6,n_col=2,alt_name='ncM')
-pdf(file = "/home/jmitchel/figures/for_paper_v2/ncMono_subc2.pdf", useDingbats = FALSE,
+pdf(file = "/home/jmitchel/figures/for_paper_v2/ncMono_subc3.pdf", useDingbats = FALSE,
     width = 8, height = 8)
 pbmc_container$plots$ctype_prop_factor_associations
 dev.off()
 
 pbmc_container <- get_ctype_subc_prop_associations(pbmc_container,ctype='cDC',res=.5,n_col=2)
-pdf(file = "/home/jmitchel/figures/for_paper_v2/cDC_subc2.pdf", useDingbats = FALSE,
+pdf(file = "/home/jmitchel/figures/for_paper_v2/cDC_subc3.pdf", useDingbats = FALSE,
     width = 8, height = 8)
 pbmc_container$plots$ctype_prop_factor_associations
 dev.off()
 
 pbmc_container <- get_ctype_subc_prop_associations(pbmc_container,ctype='B',res=.8,n_col=2)
-pdf(file = "/home/jmitchel/figures/for_paper_v2/B_subc2.pdf", useDingbats = FALSE,
+pdf(file = "/home/jmitchel/figures/for_paper_v2/B_subc3.pdf", useDingbats = FALSE,
     width = 8, height = 8)
 pbmc_container$plots$ctype_prop_factor_associations
 dev.off()
@@ -475,14 +475,14 @@ dev.off()
 
 ## now getting full ctype prop associations
 pbmc_container <- get_ctype_prop_associations(pbmc_container,'adj_pval',n_col=2)
-pdf(file = "/home/jmitchel/figures/for_paper_v2/major_ctype_props2.pdf", useDingbats = FALSE,
+pdf(file = "/home/jmitchel/figures/for_paper_v2/major_ctype_props3.pdf", useDingbats = FALSE,
     width = 8, height = 8)
 pbmc_container$plots$ctype_prop_factor_associations
 dev.off()
 
 # getting an example dotplot to show for demonstrating the process
 myplot <- get_subclust_enr_dotplot(pbmc_container,'T4',0.6,subtype=1,factor_use=1,ctype_cur='Th')
-pdf(file = "/home/jmitchel/figures/for_paper_v2/CD4_f1_sub1_dot2.pdf", useDingbats = FALSE,
+pdf(file = "/home/jmitchel/figures/for_paper_v2/CD4_f1_sub1_dot3.pdf", useDingbats = FALSE,
     width = 5.25, height = 3.5)
 myplot
 dev.off()

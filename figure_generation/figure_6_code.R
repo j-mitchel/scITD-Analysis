@@ -787,6 +787,21 @@ print(all_pv_adj)
 
 
 
+## plot for figure two showing plateau of batch factors
+## testing out my plot for looking at number of batch factors for total number decomposed
+pbmc_container <- get_num_batch_ranks(
+  pbmc_container,
+  donor_ranks_test=3:45,
+  gene_ranks=37,
+  batch_var='pool',
+  thresh = 0.5,
+  tucker_type = "regular",
+  rotation_type = "ica_dsc"
+)
+pbmc_container[["plots"]][["num_batch_factors"]]
 
-
-
+# from within code saving just the middle plot
+pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_batch_increase.pdf", useDingbats = FALSE,
+    width = 5, height = 4)
+thresh_plot
+dev.off()

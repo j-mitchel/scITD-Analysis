@@ -1,6 +1,5 @@
 # using current dev version of scITD instead of renv version...
 
-library(scITD)
 library(Seurat)
 library(RColorBrewer)
 library(ggplot2)
@@ -229,6 +228,46 @@ p
 
 
 
+
+# plotting F1 against status of three groups, healthy, covid, covid-critical
+tmp <- cbind.data.frame(dsc,pbmc_container$donor_metadata[rownames(dsc),'status_on_day_collection_summary'],
+                        pbmc_container$donor_metadata[rownames(dsc),'status'])
+colnames(tmp) <- c('dscore','status_on_day_collection_summary','status')
+# order severity levels appropriately
+tmp$status_on_day_collection_summary <- factor(tmp$status_on_day_collection_summary,levels=c('Healthy','Asymptomatic','Mild','Moderate','Severe','Critical'))
+tmp$is_critical <- sapply(as.character(tmp$status_on_day_collection_summary),function(x){
+  if (x=='Critical') {
+    return('COVID-19-critical')
+  } else if (x=='Healthy') {
+    return(x)
+  } else {
+    return('COVID-19')
+  }
+})
+tmp$is_critical <- factor(tmp$is_critical,levels=c('Healthy','COVID-19','COVID-19-critical'))
+
+tmp2 <- tmp
+tmp2$status <- rep('violin',nrow(tmp2))
+p <- ggplot(tmp,aes(x=is_critical,y=dscore,fill=status)) +
+  geom_violin(data=tmp2) +
+  geom_dotplot(binaxis='y', stackdir='center', dotsize=1.25, binwidth = .01) +
+  ylab('Factor 1 Donor Score') +
+  xlab('COVID-19 Status') +
+  coord_flip() +
+  scale_fill_manual(values=c(mycol[5], mycol[2], 'light gray')) +
+  theme_bw() +
+  theme(axis.text=element_text(size=24),
+        axis.title=element_text(size=26))
+
+pdf(file = "/home/jmitchel/figures/for_paper_v2/covid_f1_status2.pdf", useDingbats = FALSE,
+    width = 12.5, height = 8.5)
+p
+dev.off()
+
+
+
+
+
 ## getting enrichment p-values for f1 with status
 enr_fig <- plot_dscore_enr(pbmc_container, factor_use=1, meta_var='status')
 enr_fig
@@ -239,15 +278,13 @@ container=pbmc_container
 meta_var='status_on_day_collection_summary'
 factor_use=1
 meta <- unique(container$scMinimal_full$metadata[,c('donors',meta_var)])
-# removing healthy donors
-meta <- meta[meta$status_on_day_collection_summary!='Healthy',]
 rownames(meta) <- meta$donors
 meta$is_critical <- sapply(as.character(meta$status_on_day_collection_summary),function(x){
   if (x=='Critical') {
-    return('Critical')
-  } else {
-    return('Not critical')
-  }
+    return('COVID-19-critical')
+  } else if (x=='Healthy') {
+    return('Healthy')
+  } else {return('COVID-19')}
 })
 meta_var <- 'is_critical'
 
@@ -388,7 +425,7 @@ plot_gsea_hmap_w_similarity(pbmc_container,factor_select=1,direc='up',thresh=.05
 plot_gsea_hmap_w_similarity(pbmc_container,factor_select=1,direc='down',thresh=.05,
                             exclude_words=c('regulation','positive','negative'))
 
-plot_gsea_sub(pbmc_container,thresh=.05,clust_select=12)
+plot_gsea_sub(pbmc_container,thresh=.05,clust_select=1)
 
 ## f1 sets to show on loading hmap
 gsets <- c("GOBP_RESPONSE_TO_TYPE_I_INTERFERON",
@@ -396,6 +433,25 @@ gsets <- c("GOBP_RESPONSE_TO_TYPE_I_INTERFERON",
 
 gset_cmap <- c('forest green',
                'black')
+
+#### testing out adding some more gene sets
+gsets <- c("GOBP_RESPONSE_TO_TYPE_I_INTERFERON",
+           "GOBP_RESPONSE_TO_INTERFERON_GAMMA",
+           "GOBP_PROTEOLYSIS",
+           "GOBP_MYELOID_LEUKOCYTE_MEDIATED_IMMUNITY",
+           "GOBP_SECRETION",
+           "GOBP_REGULATION_OF_TUMOR_NECROSIS_FACTOR_SUPERFAMILY_CYTOKINE_PRODUCTION",
+           "GOBP_CELL_CYCLE")
+
+gset_cmap <- c('forest green',
+               'black',
+               'black',
+               'black',
+               'black',
+               'black',
+               'black')
+
+####
 
 names(gset_cmap) <- gsets
 
@@ -411,7 +467,7 @@ pbmc_container <- plot_loadings_annot(pbmc_container, factor_select=1, use_sig_o
                                       clust_method='mcquitty', h_w=c(9,6.5))
 dev.off()
 hm_list <- plot_select_sets(pbmc_container, 1, gsets, color_sets=gset_cmap, 
-                            cl_rows=F, myfontsize=6.5, h_w=c(3,6.5))
+                            cl_rows=F, myfontsize=6.5, h_w=c(4.5,6.5))
 
 p1 <- pbmc_container$plots$all_lds_plots[['1']]
 p2 <- p1 %v% hm_list[[1]]
@@ -426,6 +482,11 @@ draw(p2,annotation_legend_list = pd,
      newpage=TRUE, auto_adjust = FALSE)
 dev.off()
 
+# to save just the gene sets component
+pdf(file = "/home/jmitchel/figures/for_paper_v2/covid_f1_lds_go3.pdf", useDingbats = FALSE,
+    width = 12, height = 10)
+hm_list
+dev.off()
 
 
 
@@ -868,7 +929,7 @@ tmp1 <- cbind.data.frame(sig_df_SLE[,1],sig_df_SLE2[rownames(sig_df_SLE),1])
 colnames(tmp1) <- c('tstat','pval')
 tmp1 <- tmp1[order(abs(tmp1$tstat),decreasing=TRUE),]
 ndx_thr <- which(tmp1$pval<.01)
-tmp1[730:740,]
+tmp1[1:100,]
 sle_thresh <- abs(tmp1[max(ndx_thr),'tstat'])
 
 
@@ -883,12 +944,32 @@ library(org.Hs.eg.db)
 ## NK cells
 covid_sub <- sig_df_covid[genes_both,'NK']
 covid_sig_up <- names(covid_sub)[covid_sub>covid_thresh] 
+covid_sig_down <- names(covid_sub)[covid_sub<(-covid_thresh)] 
+covid_sig_all <- names(covid_sub)[abs(covid_sub)>covid_thresh] 
 
 sle_sub <- sig_df_SLE[genes_both,'NK']
 sle_sig_up <- names(sle_sub)[sle_sub>sle_thresh]
+sle_sig_down <- names(sle_sub)[sle_sub<(-sle_thresh)]
+sle_sig_all <- names(sle_sub)[abs(sle_sub)>sle_thresh] 
 
 bg <- unique(c(covid_sig_up,sle_sig_up))
 covid_unique_up <- covid_sig_up[!(covid_sig_up %in% sle_sig_up)]
+sle_unique_up <- sle_sig_up[!(sle_sig_up %in% covid_sig_up)]
+
+## writing the genes to csvs
+sig_both <- intersect(covid_sig_up,sle_sig_up)
+write.csv(sig_both,file='/home/jmitchel/data/gene_lists/NK_sig_both.csv')
+write.csv(covid_unique_up,file='/home/jmitchel/data/gene_lists/NK_sig_covid.csv')
+write.csv(sle_unique_up,file='/home/jmitchel/data/gene_lists/NK_sig_sle.csv')
+
+# bg <- unique(c(covid_sig_down,sle_sig_down))
+# covid_unique_up <- covid_sig_down[!(covid_sig_down %in% sle_sig_down)]
+# sle_unique_up <- sle_sig_down[!(sle_sig_down %in% covid_sig_down)]
+
+bg <- unique(c(covid_sig_all,sle_sig_all))
+covid_unique_up <- covid_sig_all[!(covid_sig_all %in% sle_sig_all)]
+sle_unique_up <- sle_sig_all[!(sle_sig_all %in% covid_sig_all)]
+
 enr_res_c1 <- enrichGO(covid_unique_up,
                     keyType = 'SYMBOL',
                     universe=bg,
@@ -898,15 +979,14 @@ enr_res_c1 <- enrichGO(covid_unique_up,
 
 enr_res_c1@result[1:10,c('Description','p.adjust')]
 
-sle_unique_up <- sle_sig_up[!(sle_sig_up %in% covid_sig_up)]
-enr_res_s1 <- enrichGO(sle_unique_up,
+enr_res_s1 <- enrichGO(sle_unique_up, #increased maxGSSize for proteolysis enrichment calculation...
                     keyType = 'SYMBOL',
                     universe=bg,
                     OrgDb = org.Hs.eg.db,
                     ont = "BP",
                     minGSSize = 10)
 
-enr_res_s1@result[1:90,c('Description','p.adjust')]
+enr_res_s1@result[1:10,c('Description','p.adjust')]
 # sets to show later:
 # leukocyte cell-cell adhesion, tissue development, apoptotic process, cell activation, leukocyte migration,
 # carboxylic acid metabolic process, Fc receptor signaling pathway
@@ -914,6 +994,13 @@ pth <- c('leukocyte cell-cell adhesion', 'tissue development', 'apoptotic proces
          'cell activation', 'leukocyte migration',
          'carboxylic acid metabolic process', 'Fc receptor signaling pathway')
 enr_res_s1@result[enr_res_s1@result$Description %in% pth,]
+
+# proteolysis p-value: .016
+
+# save relevant genes
+tmp <- as.data.frame(enr_res_s1@result[enr_res_s1@result$Description %in% pth,'geneID'])
+write.csv(tmp,file='/home/jmitchel/data/gene_lists/NK_gsets.csv')
+
 
 ## other genes to potentially show
 # TNFAIP8L2, SELL, CX3CR1, CD74, HAVCR2, HLA-DRB1, HLA-DPA1, HLA-DPB1,
@@ -924,12 +1011,25 @@ enr_res_s1@result[enr_res_s1@result$Description %in% pth,]
 ## Th cells
 covid_sub <- sig_df_covid[genes_both,'Th']
 covid_sig_up <- names(covid_sub)[covid_sub>covid_thresh] 
+covid_sig_down <- names(covid_sub)[covid_sub<(-covid_thresh)] 
 
 sle_sub <- sig_df_SLE[genes_both,'Th']
 sle_sig_up <- names(sle_sub)[sle_sub>sle_thresh]
+sle_sig_down <- names(sle_sub)[sle_sub<(-sle_thresh)]
 
 bg <- unique(c(covid_sig_up,sle_sig_up))
 covid_unique_up <- covid_sig_up[!(covid_sig_up %in% sle_sig_up)]
+sle_unique_up <- sle_sig_up[!(sle_sig_up %in% covid_sig_up)]
+# bg <- unique(c(covid_sig_down,sle_sig_down))
+# covid_unique_up <- covid_sig_down[!(covid_sig_down %in% sle_sig_down)]
+# sle_unique_up <- sle_sig_down[!(sle_sig_down %in% covid_sig_down)]
+
+## writing the genes to csvs
+sig_both <- intersect(covid_sig_up,sle_sig_up)
+write.csv(sig_both,file='/home/jmitchel/data/gene_lists/Th_sig_both.csv')
+write.csv(covid_unique_up,file='/home/jmitchel/data/gene_lists/Th_sig_covid.csv')
+write.csv(sle_unique_up,file='/home/jmitchel/data/gene_lists/Th_sig_sle.csv')
+
 enr_res_c2 <- enrichGO(covid_unique_up,
                     keyType = 'SYMBOL',
                     universe=bg,
@@ -939,7 +1039,6 @@ enr_res_c2 <- enrichGO(covid_unique_up,
 
 enr_res_c2@result[1:10,c('Description','p.adjust')]
 
-sle_unique_up <- sle_sig_up[!(sle_sig_up %in% covid_sig_up)]
 enr_res_s2 <- enrichGO(sle_unique_up,
                     keyType = 'SYMBOL',
                     universe=bg,
@@ -947,19 +1046,34 @@ enr_res_s2 <- enrichGO(sle_unique_up,
                     ont = "BP",
                     minGSSize = 10)
 
-enr_res_s2@result[1:90,c('Description','p.adjust')]
+enr_res_s2@result[1:40,c('Description','p.adjust')]
+
+#proteolysis p-value: .033
 
 ## Tc cells
 covid_sub <- sig_df_covid[genes_both,'Tc']
 covid_sig_up <- names(covid_sub)[covid_sub>covid_thresh] 
+covid_sig_down <- names(covid_sub)[covid_sub<(-covid_thresh)] 
 
 sle_sub <- sig_df_SLE[genes_both,'Tc']
 sle_sig_up <- names(sle_sub)[sle_sub>sle_thresh]
+sle_sig_down <- names(sle_sub)[sle_sub<(-sle_thresh)]
 
 # length(intersect(covid_sig_up,sle_sig_up))
 
 bg <- unique(c(covid_sig_up,sle_sig_up))
 covid_unique_up <- covid_sig_up[!(covid_sig_up %in% sle_sig_up)]
+sle_unique_up <- sle_sig_up[!(sle_sig_up %in% covid_sig_up)]
+# bg <- unique(c(covid_sig_down,sle_sig_down))
+# covid_unique_up <- covid_sig_down[!(covid_sig_down %in% sle_sig_down)]
+# sle_unique_up <- sle_sig_down[!(sle_sig_down %in% covid_sig_down)]
+
+## writing the genes to csvs
+sig_both <- intersect(covid_sig_up,sle_sig_up)
+write.csv(sig_both,file='/home/jmitchel/data/gene_lists/Tc_sig_both.csv')
+write.csv(covid_unique_up,file='/home/jmitchel/data/gene_lists/Tc_sig_covid.csv')
+write.csv(sle_unique_up,file='/home/jmitchel/data/gene_lists/Tc_sig_sle.csv')
+
 enr_res_c3 <- enrichGO(covid_unique_up,
                     keyType = 'SYMBOL',
                     universe=bg,
@@ -969,7 +1083,6 @@ enr_res_c3 <- enrichGO(covid_unique_up,
 
 enr_res_c3@result[1:10,c('Description','p.adjust')]
 
-sle_unique_up <- sle_sig_up[!(sle_sig_up %in% covid_sig_up)]
 enr_res_s3 <- enrichGO(sle_unique_up,
                     keyType = 'SYMBOL',
                     universe=bg,
@@ -977,11 +1090,17 @@ enr_res_s3 <- enrichGO(sle_unique_up,
                     ont = "BP",
                     minGSSize = 10)
 
-enr_res_s3@result[1:70,c('Description','p.adjust')]
+enr_res_s3@result[1:10,c('Description','p.adjust')]
 # sets to show later:
 pth <- c('ATP metabolic process','carboxylic acid metabolic process','mitotic cell cycle process',
          'Fc receptor signaling pathway')
 enr_res_s3@result[enr_res_s3@result$Description %in% pth,]
+
+# proteolysis pval: .51
+
+# save relevant genes
+tmp <- as.data.frame(enr_res_s3@result[enr_res_s3@result$Description %in% pth,'geneID'])
+write.csv(tmp,file='/home/jmitchel/data/gene_lists/Tc_gsets.csv')
 
 # genes to show
 # ENO1, SDHC, COA6, NDUFB3, UQCRC1, NDUFB4, NDUFS
@@ -991,12 +1110,25 @@ enr_res_s3@result[enr_res_s3@result$Description %in% pth,]
 ## B cells
 covid_sub <- sig_df_covid[genes_both,'B']
 covid_sig_up <- names(covid_sub)[covid_sub>covid_thresh] 
+covid_sig_down <- names(covid_sub)[covid_sub<(-covid_thresh)] 
 
 sle_sub <- sig_df_SLE[genes_both,'B']
 sle_sig_up <- names(sle_sub)[sle_sub>sle_thresh]
+sle_sig_down <- names(sle_sub)[sle_sub<(-sle_thresh)]
 
 bg <- unique(c(covid_sig_up,sle_sig_up))
 covid_unique_up <- covid_sig_up[!(covid_sig_up %in% sle_sig_up)]
+sle_unique_up <- sle_sig_up[!(sle_sig_up %in% covid_sig_up)]
+# bg <- unique(c(covid_sig_down,sle_sig_down))
+# covid_unique_up <- covid_sig_down[!(covid_sig_down %in% sle_sig_down)]
+# sle_unique_up <- sle_sig_down[!(sle_sig_down %in% covid_sig_down)]
+
+## writing the genes to csvs
+sig_both <- intersect(covid_sig_up,sle_sig_up)
+write.csv(sig_both,file='/home/jmitchel/data/gene_lists/B_sig_both.csv')
+write.csv(covid_unique_up,file='/home/jmitchel/data/gene_lists/B_sig_covid.csv')
+write.csv(sle_unique_up,file='/home/jmitchel/data/gene_lists/B_sig_sle.csv')
+
 enr_res_c4 <- enrichGO(covid_unique_up,
                     keyType = 'SYMBOL',
                     universe=bg,
@@ -1006,7 +1138,6 @@ enr_res_c4 <- enrichGO(covid_unique_up,
 
 enr_res_c4@result[1:10,c('Description','p.adjust')]
 
-sle_unique_up <- sle_sig_up[!(sle_sig_up %in% covid_sig_up)]
 enr_res_s4 <- enrichGO(sle_unique_up,
                     keyType = 'SYMBOL',
                     universe=bg,
@@ -1014,10 +1145,16 @@ enr_res_s4 <- enrichGO(sle_unique_up,
                     ont = "BP",
                     minGSSize = 10)
 
-enr_res_s4@result[1:70,c('Description','p.adjust')]
+enr_res_s4@result[1:10,c('Description','p.adjust')]
 # sets to show later:
 pth <- c('regulation of MAP kinase activity')
 enr_res_s4@result[enr_res_s4@result$Description %in% pth,]
+
+#proteolysis pval: .97
+
+# save relevant genes
+tmp <- as.data.frame(enr_res_s4@result[enr_res_s4@result$Description %in% pth,'geneID'])
+write.csv(tmp,file='/home/jmitchel/data/gene_lists/B_gsets.csv')
 
 # genes to show
 # RGS2, AIDA, CXCR4, DUSP1, STK38, DNAJA1, GNG3, DUSP5, DUSP6, RASGRP1, UBB, GADD45B
@@ -1026,12 +1163,32 @@ enr_res_s4@result[enr_res_s4@result$Description %in% pth,]
 ## cMono cells
 covid_sub <- sig_df_covid[genes_both,'cMono']
 covid_sig_up <- names(covid_sub)[covid_sub>covid_thresh] 
+covid_sig_down <- names(covid_sub)[covid_sub<(-covid_thresh)] 
+covid_sig_all <- names(covid_sub)[abs(covid_sub)>covid_thresh] 
 
 sle_sub <- sig_df_SLE[genes_both,'cMono']
 sle_sig_up <- names(sle_sub)[sle_sub>sle_thresh]
+sle_sig_down <- names(sle_sub)[sle_sub<(-sle_thresh)]
+sle_sig_all <- names(sle_sub)[abs(sle_sub)>sle_thresh] 
 
 bg <- unique(c(covid_sig_up,sle_sig_up))
 covid_unique_up <- covid_sig_up[!(covid_sig_up %in% sle_sig_up)]
+sle_unique_up <- sle_sig_up[!(sle_sig_up %in% covid_sig_up)]
+
+# bg <- unique(c(covid_sig_down,sle_sig_down))
+# covid_unique_up <- covid_sig_down[!(covid_sig_down %in% sle_sig_down)]
+# sle_unique_up <- sle_sig_down[!(sle_sig_down %in% covid_sig_down)]
+
+bg <- unique(c(covid_sig_all,sle_sig_all))
+covid_unique_up <- covid_sig_all[!(covid_sig_all %in% sle_sig_all)]
+sle_unique_up <- sle_sig_all[!(sle_sig_all %in% covid_sig_all)]
+
+## writing the genes to csvs
+sig_both <- intersect(covid_sig_up,sle_sig_up)
+write.csv(sig_both,file='/home/jmitchel/data/gene_lists/cMono_sig_both.csv')
+write.csv(covid_unique_up,file='/home/jmitchel/data/gene_lists/cMono_sig_covid.csv')
+write.csv(sle_unique_up,file='/home/jmitchel/data/gene_lists/cMono_sig_sle.csv')
+
 enr_res_c5 <- enrichGO(covid_unique_up,
                     keyType = 'SYMBOL',
                     universe=bg,
@@ -1041,7 +1198,6 @@ enr_res_c5 <- enrichGO(covid_unique_up,
 
 enr_res_c5@result[1:10,c('Description','p.adjust')]
 
-sle_unique_up <- sle_sig_up[!(sle_sig_up %in% covid_sig_up)]
 enr_res_s5 <- enrichGO(sle_unique_up,
                     keyType = 'SYMBOL',
                     universe=bg,
@@ -1049,10 +1205,16 @@ enr_res_s5 <- enrichGO(sle_unique_up,
                     ont = "BP",
                     minGSSize = 10)
 
-enr_res_s5@result[1:70,c('Description','p.adjust')]
+enr_res_s5@result[1:10,c('Description','p.adjust')]
 # sets to show later:
 pth <- c('actin filament organization')
 enr_res_s5@result[enr_res_s5@result$Description %in% pth,]
+
+# save relevant genes
+tmp <- as.data.frame(enr_res_s5@result[enr_res_s5@result$Description %in% pth,'geneID'])
+write.csv(tmp,file='/home/jmitchel/data/gene_lists/cMono_gsets.csv')
+
+#proteolysis pval: .089
 
 # genes to show
 # CAPZB, CDC42, RHOC, S100A10, TPM3, HAX1, ARPC5, ARF1, PLEK, TMSB10, CAPG, ACTR3,
@@ -1330,7 +1492,6 @@ p4 <- ggplot(tmp,aes(x=covid,y=sle,color=as.factor(is_callout))) +
 
 p4
 
-
 tmp <- cbind.data.frame(sig_df_covid[genes_both,'NK'],sig_df_SLE[genes_both,'NK'])
 # adding gene labels for callouts
 colnames(tmp) <- c('covid','sle')
@@ -1389,66 +1550,364 @@ library(cowplot)
 # 
 # fig <- plot_grid(p5,p3,p2,p4,p1,ncol=2,align = 'hv')
 
-fig <- plot_grid(p3,p5,nrow=1)
+fig <- plot_grid(p3,p1,nrow=1)
 
-pdf(file = "/home/jmitchel/figures/for_paper_v2/covid_sle_dotplots.pdf", useDingbats = FALSE,
-    width = 9, height = 7)
+pdf(file = "/home/jmitchel/figures/for_paper_v2/covid_sle_dotplots2.pdf", useDingbats = FALSE,
+    width = 9.5, height = 6)
 fig
+dev.off()
+
+
+fig <- plot_grid(p2,p4,nrow=1)
+
+pdf(file = "/home/jmitchel/figures/for_paper_v2/covid_sle_dotplots3.pdf", useDingbats = FALSE,
+    width = 9.5, height = 6)
+fig
+dev.off()
+
+pdf(file = "/home/jmitchel/figures/for_paper_v2/covid_sle_dotplots4.pdf", useDingbats = FALSE,
+    width = 4.75, height = 6)
+p5
 dev.off()
 
 
 
 
+
+## cor vals for comparing the two covid datasets
+# cMono: .77, Th: .68, Tc: .56, B:, .65, NK: .61
+
+cool1 <- get_one_factor(pbmc_container,1)[[2]]
+cool2 <- get_one_factor(pbmc_container_SLE,1)[[2]]
+gb <- intersect(rownames(cool1),rownames(cool2))
+cor(cool1[gb,1],cool2[gb,1])
+cor(cool1[gb,2],cool2[gb,2])
+cor(cool1[gb,3],cool2[gb,3])
+cor(cool1[gb,4],cool2[gb,4])
+cor(cool1[gb,5],cool2[gb,5])
+
+
+
+
+
 ## getting number of same significant genes for table
-covid_sub <- sig_df_covid2[genes_both,'Tc']
-covid_sig <- names(covid_sub)[covid_sub<.01] 
+get_num_sig <- function(ctype) {
+  covid_sub <- sig_df_covid2[genes_both,ctype]
+  covid_sig <- names(covid_sub)[covid_sub<.01] 
+  
+  sle_sub <- sig_df_SLE2[genes_both,ctype]
+  sle_sig <- names(sle_sub)[sle_sub<.01]
+  
+  print(length(intersect(covid_sig,sle_sig)))
+  print(length(covid_sig[!(covid_sig %in% sle_sig)]))
+  print(length(sle_sig[!(sle_sig %in% covid_sig)]))
+}
 
-sle_sub <- sig_df_SLE2[genes_both,'Tc']
-sle_sig <- names(sle_sub)[sle_sub<.01]
+get_num_sig('Th')
+get_num_sig('Tc')
+get_num_sig('NK')
+get_num_sig('B')
+get_num_sig('cMono')
 
-length(intersect(covid_sig,sle_sig))
-length(covid_sig[!(covid_sig %in% sle_sig)])
-length(sle_sig[!(sle_sig %in% covid_sig)])
 
-covid_sub <- sig_df_covid2[genes_both,'cMono']
-covid_sig <- names(covid_sub)[covid_sub<.01] 
 
-sle_sub <- sig_df_SLE2[genes_both,'cMono']
-sle_sig <- names(sle_sub)[sle_sub<.01]
 
-length(intersect(covid_sig,sle_sig))
-length(covid_sig[!(covid_sig %in% sle_sig)])
-length(sle_sig[!(sle_sig %in% covid_sig)])
 
-covid_sub <- sig_df_covid2[genes_both,'Th']
-covid_sig <- names(covid_sub)[covid_sub<.01] 
 
-sle_sub <- sig_df_SLE2[genes_both,'Th']
-sle_sig <- names(sle_sub)[sle_sub<.01]
 
-length(intersect(covid_sig,sle_sig))
-length(covid_sig[!(covid_sig %in% sle_sig)])
-length(sle_sig[!(sle_sig %in% covid_sig)])
 
-covid_sub <- sig_df_covid2[genes_both,'B']
-covid_sig <- names(covid_sub)[covid_sub<.01] 
 
-sle_sub <- sig_df_SLE2[genes_both,'B']
-sle_sig <- names(sle_sub)[sle_sub<.01]
 
-length(intersect(covid_sig,sle_sig))
-length(covid_sig[!(covid_sig %in% sle_sig)])
-length(sle_sig[!(sle_sig %in% covid_sig)])
 
-covid_sub <- sig_df_covid2[genes_both,'NK']
-covid_sig <- names(covid_sub)[covid_sub<.01] 
 
-sle_sub <- sig_df_SLE2[genes_both,'NK']
-sle_sig <- names(sle_sub)[sle_sub<.01]
 
-length(intersect(covid_sig,sle_sig))
-length(covid_sig[!(covid_sig %in% sle_sig)])
-length(sle_sig[!(sle_sig %in% covid_sig)])
+## showing enrichment of proteolysis process in the thing
+
+# from inside run_fgsea because need these values to make the enrichment plot
+get_paths_ranks <- function(container, factor_select, ctype, db_use="GO", signed=TRUE, 
+                      max_gs_size=500, ncores=container$experiment_params$ncores) {
+  donor_scores <- container$tucker_results[[1]]
+  
+  # select mean exp data for one cell type
+  tnsr_slice <- container$scMinimal_ctype[[ctype]]$pseudobulk
+  tnsr_slice <- scale(tnsr_slice, center=TRUE) # rescaling to unit variance
+  
+  # get transformed expression for each gene by summing d_score * scaled exp
+  exp_vals <- sapply(1:ncol(tnsr_slice), function(j) {
+    if (signed) {
+      exp_transform <- tnsr_slice[,j] * donor_scores[rownames(tnsr_slice),factor_select]
+      de_val <- sum(exp_transform)
+    } else {
+      # testing out using undirected statistics
+      exp_transform <- tnsr_slice[,j] * donor_scores[rownames(tnsr_slice),factor_select]
+      de_val <- abs(sum(exp_transform))
+    }
+    
+    return(de_val)
+  })
+  
+  names(exp_vals) <- convert_gn(container,colnames(tnsr_slice))
+  
+  # remove duplicate genes
+  ndx_remove <- duplicated(names(exp_vals)) | duplicated(names(exp_vals), fromLast = TRUE)
+  exp_vals <- exp_vals[!ndx_remove]
+  
+  m_df <- data.frame()
+  for (db in db_use) {
+    if (db == "GO") {
+      # select the GO Biological Processes group of gene sets
+      m_df <- rbind(m_df,msigdbr::msigdbr(species = "Homo sapiens",
+                                          category = "C5", subcategory = "BP"))
+    } else if (db == "GOCC") {
+      # select the GOCC gene sets
+      m_df <- rbind(m_df,msigdbr::msigdbr(species = "Homo sapiens",
+                                          category = "C5", subcategory = "CC"))
+    } else if (db == "Reactome") {
+      # select the Reactome gene sets
+      m_df <- rbind(m_df,msigdbr::msigdbr(species = "Homo sapiens",
+                                          category = "C2", subcategory = "CP:REACTOME"))
+    } else if (db == "KEGG") {
+      # select the KEGG gene sets
+      m_df <- rbind(m_df,msigdbr::msigdbr(species = "Homo sapiens",
+                                          category = "C2", subcategory = "CP:KEGG"))
+    } else if (db == "BioCarta") {
+      # select the BioCarts gene sets
+      m_df <- rbind(m_df,msigdbr::msigdbr(species = "Homo sapiens",
+                                          category = "C2", subcategory = "CP:BIOCARTA"))
+    } else if (db == "Hallmark") {
+      # select the BioCarts gene sets
+      m_df <- rbind(m_df,msigdbr::msigdbr(species = "Homo sapiens",
+                                          category = "H"))
+    } else if (db == "TF") {
+      m_df <- rbind(m_df,msigdbr::msigdbr(species = "Homo sapiens",
+                                          category = "C3", subcategory = "TFT:GTRD"))
+      m_df <- rbind(m_df,msigdbr::msigdbr(species = "Homo sapiens",
+                                          category = "C3", subcategory = "TFT:TFT_Legacy"))
+    }
+  }
+  
+  my_pathways <- split(m_df$gene_symbol, f = m_df$gs_name)
+  
+  return(list(my_pathways,exp_vals))
+}
+
+# for covid data first
+go_covid <- run_fgsea(pbmc_container, factor_select=1, ctype='Tc', 
+                      db_use="GOCC", signed=TRUE, min_gs_size=5, ncores=10)
+covid_paths_ranks <- get_paths_ranks(pbmc_container, factor_select=1, ctype='Tc', 
+                            db_use="GOCC", signed=TRUE, ncores=10)
+mypaths <- covid_paths_ranks[[1]]
+myranks <- covid_paths_ranks[[2]]
+myranks <- myranks[!is.na(myranks)]
+
+plt_covid <- fgsea::plotEnrichment(mypaths[['GOCC_ENDOPEPTIDASE_COMPLEX']],
+                             myranks) + labs(title='ENDOPEPTIDASE_COMPLEX - COVID-19 Factor 1')
+
+plt_covid <- plt_covid +
+  annotate(geom="text",  x=Inf, y=Inf, hjust=1,vjust=1, col="black",
+           label=paste0('p-value: ',signif(go_covid[go_covid$pathway=='GOCC_ENDOPEPTIDASE_COMPLEX','pval'],digits=2)))
+
+# flip sign of F1 so high ISG expression is positive instead of negative (signs are arbitrary)
+pbmc_container_SLE$tucker_results[[1]][,1] <- pbmc_container_SLE$tucker_results[[1]][,1] * -1
+pbmc_container_SLE$tucker_results[[2]][1,] <- pbmc_container_SLE$tucker_results[[2]][1,] * -1
+go_SLE <- run_fgsea(pbmc_container_SLE, factor_select=1, ctype='Tc', 
+                    db_use="GOCC", signed=TRUE, min_gs_size=5, ncores=10)
+SLE_paths_ranks <- get_paths_ranks(pbmc_container_SLE, factor_select=1, ctype='Tc', 
+                                     db_use="GOCC", signed=TRUE, ncores=10)
+mypaths <- SLE_paths_ranks[[1]]
+myranks <- SLE_paths_ranks[[2]]
+myranks <- myranks[!is.na(myranks)]
+
+plt_sle <- fgsea::plotEnrichment(mypaths[['GOCC_ENDOPEPTIDASE_COMPLEX']],
+                             myranks) + labs(title='ENDOPEPTIDASE_COMPLEX - SLE Factor 1')
+
+plt_sle <- plt_sle +
+  annotate(geom="text",  x=Inf, y=Inf, hjust=1,vjust=1, col="black",
+           label=paste0('p-value: ',signif(go_SLE[go_SLE$pathway=='GOCC_ENDOPEPTIDASE_COMPLEX','pval'],digits=2)))
+
+pdf(file = "/home/jmitchel/figures/for_paper_v2/covid_proteolysis.pdf", useDingbats = FALSE,
+    width = 3.5, height = 3)
+plt_covid
+dev.off()
+
+pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_proteolysis.pdf", useDingbats = FALSE,
+    width = 3.5, height = 3)
+plt_sle
+dev.off()
+
+
+
+
+
+
+## plotting fraction of SLE/covid-only genes in proteolysis set
+pathways <- msigdbr::msigdbr(species = "Homo sapiens",category = "C5", subcategory = "CC")
+my_pathways <- split(pathways$gene_symbol, f = pathways$gs_name)
+prot_set <- my_pathways[['GOCC_ENDOPEPTIDASE_COMPLEX']]
+# prot_set <- my_pathways[['GOBP_PROTEOLYSIS']]
+
+get_fracs_pval <- function(ctype) {
+  covid_sub <- sig_df_covid[genes_both,ctype]
+  covid_sig_up <- names(covid_sub)[covid_sub>covid_thresh] 
+  
+  sle_sub <- sig_df_SLE[genes_both,ctype]
+  sle_sig_up <- names(sle_sub)[sle_sub>sle_thresh]
+  
+  covid_unique_up <- covid_sig_up[!(covid_sig_up %in% sle_sig_up)]
+  sle_unique_up <- sle_sig_up[!(sle_sig_up %in% covid_sig_up)]
+  bg <- unique(c(covid_unique_up,sle_unique_up))
+  
+  covid_frac <- sum(covid_unique_up %in% prot_set) / length(covid_unique_up)
+  SLE_frac <- sum(sle_unique_up %in% prot_set) / length(sle_unique_up)
+  
+  # get enrichment p-value
+  enr_res <- enrichGO(sle_unique_up,
+                      keyType = 'SYMBOL',
+                      universe=bg,
+                      OrgDb = org.Hs.eg.db,ont = "CC",
+                      minGSSize = 2)
+  pval <- enr_res@result[enr_res@result$Description=='endopeptidase complex','pvalue']
+  return(list(covid_frac,SLE_frac,pval))
+}
+
+res <- matrix(nrow=10,ncol=3)
+colnames(res) <- c('ctype','dataset','frac')
+
+res1 <- get_fracs_pval('Tc')
+res[1,] <- c('Tc','COVID-19',res1[[1]])
+res[2,] <- c('Tc','SLE',res1[[2]])
+res1[[3]]
+
+res2 <- get_fracs_pval('Th')
+res[3,] <- c('Th','COVID-19',res2[[1]])
+res[4,] <- c('Th','SLE',res2[[2]])
+res2[[3]]
+
+res3 <- get_fracs_pval('NK')
+res[5,] <- c('NK','COVID-19',res3[[1]])
+res[6,] <- c('NK','SLE',res3[[2]])
+res3[[3]]
+
+res4 <- get_fracs_pval('B')
+res[7,] <- c('B','COVID-19',res4[[1]])
+res[8,] <- c('B','SLE',res4[[2]])
+res4[[3]]
+
+res5 <- get_fracs_pval('cMono')
+res[9,] <- c('cMono','COVID-19',res5[[1]])
+res[10,] <- c('cMono','SLE',res5[[2]])
+res5[[3]]
+
+res <- as.data.frame(res)
+
+res$ctype <- as.factor(res$ctype)
+res$dataset <- as.factor(res$dataset)
+res$frac <- as.numeric(res$frac)
+
+# adding very small value where 0, so it shows up on the plot
+res$frac[res$frac==0] <- .0001
+
+# plotting results
+p <- ggplot(res,aes(x=ctype,y=frac,fill=dataset)) +
+  geom_bar(stat="identity", position=position_dodge(preserve = "single")) +
+  ylab('Fraction of dataset-specific F1 genes') +
+  xlab ('') +
+  theme_bw()
+
+pdf(file = "/home/jmitchel/figures/for_paper_v2/proteasome_comp.pdf", useDingbats = FALSE,
+    width = 6, height = 2.8)
+p
+dev.off()
+
+
+
+
+
+
+
+# ## computing and comparing IFN TF activity and targets between covid and SLE
+# # first, rerun lm to get pvalues in correct slot
+# pbmc_container <- get_lm_pvals(pbmc_container)
+# pbmc_container_SLE <- get_lm_pvals(pbmc_container_SLE)
+# 
+# # run unsigned TF gsea for each dataset
+# go_covid_Tc <- run_hypergeometric_gsea(pbmc_container, factor_select=1, ctype='cMono', up_down='unsigned',
+#                         thresh=0.01, db_use="TF")
+# go_SLE_Tc <- run_hypergeometric_gsea(pbmc_container_SLE, factor_select=1, ctype='cMono', up_down='unsigned',
+#                                        thresh=0.01, db_use="TF")
+# go_covid_Tc_2 <- run_hypergeometric_gsea(pbmc_ye, factor_select=1, ctype='cMono', up_down='unsigned',
+#                                      thresh=0.25, db_use="TF")
+# 
+# go_covid_Tc[order(go_covid_Tc)][1:10]
+# go_SLE_Tc[order(go_SLE_Tc)][1:10]
+# go_covid_Tc_2[order(go_covid_Tc_2)][1:10]
+# 
+# 
+# # extracting leading edge genes
+# regulons <- dorothea_hs %>%
+#   filter(confidence %in% c("A", "B", "C"))
+# colnames(regulons)[1] <- c('gs_name')
+# colnames(regulons)[3] <- c('gene_symbol')
+# 
+# sig_both <- intersect(names(go_covid_Tc)[go_covid_Tc<.05],names(go_SLE_Tc)[go_SLE_Tc<.05])
+# sig_both
+# all_targets <- regulons$gene_symbol[regulons$gs_name=='STAT2']
+# le_1 <- all_targets[all_targets %in% covid_sig_all]
+# le_1 <- le_1[le_1 %in% genes_both]
+# le_2 <- all_targets[all_targets %in% sle_sig_all]
+# le_2 <- le_2[le_2 %in% genes_both]
+# length(intersect(le_1,le_2))/length(union(le_1,le_2))
+# 
+# 
+# go_covid <- run_fgsea(pbmc_container, factor_select=1, ctype='cMono', 
+#                     db_use="TF", signed=FALSE, ncores=10)
+# go_SLE <- run_fgsea(pbmc_container_SLE, factor_select=1, ctype='cMono', 
+#                        db_use="TF", signed=FALSE, ncores=10)
+# go_ye <- run_fgsea(pbmc_ye, factor_select=1, ctype='cMono', 
+#                     db_use="TF", signed=FALSE, ncores=10)
+# go_covid <- go_covid[go_covid$padj<.05,]
+# go_SLE <- go_SLE[go_SLE$padj<.05,]
+# go_ye <- go_ye[go_ye$padj<.05,]
+# 
+# sig_both <- intersect(go_covid$pathway,go_SLE$pathway)
+# sig_both <- intersect(go_covid$pathway,go_ye$pathway)
+# sig_both
+# # calculate jaccard coefficient of overlap
+# le_1 <- go_covid[go_covid$pathway=='PSMB5_TARGET_GENES','leadingEdge'][[1]][[1]]
+# le_1 <- le_1[le_1 %in% genes_both]
+# 
+# le_2 <- go_SLE[go_SLE$pathway=='IRF1','leadingEdge'][[1]][[1]]
+# le_2 <- le_2[le_2 %in% genes_both]
+# 
+# le_2 <- go_ye[go_ye$pathway=='PSMB5_TARGET_GENES','leadingEdge'][[1]][[1]]
+# le_2 <- le_2[le_2 %in% genes_both]
+# 
+# length(intersect(le_1,le_2))/length(union(le_1,le_2))
+# 
+# # probably should have removed genes w 0 expression for significance estimation...
+# # for validation, should try this with the Jimmie Ye dataset and should get higher matched leadingEdge sets
+# # also critical that I make sure the same sets of genes are being compared...
+# 
+# # determine consistently activated TFs
+# 
+# # get their leading edge genes
+# 
+# # compute jaccard coefficients
+# 
+# # get top 5 TFs with highest target gene overlap
+# 
+# # get top 5 TFs with least target gene overlap
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -2084,3 +2543,34 @@ dev.off()
 # # pdf(file = "/home/jmitchel/figures/for_paper_v2/covid_f2_severity2.pdf", useDingbats = FALSE,
 # #     width = 12.5, height = 8.5)
 # p
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### paused analysis just before line 858
+# looking at genes that are IFN upregulated in factor 1 SLE
+
+
+
+
+
+
+
+
+
+
+
+
+

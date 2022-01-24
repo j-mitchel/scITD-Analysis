@@ -97,20 +97,24 @@ pbmc_container <- get_all_lds_factor_plots(pbmc_container, use_sig_only=TRUE,
 # run gsea for a f1
 pbmc_container <- run_gsea_one_factor(pbmc_container, factor_select=1, method="fgsea", thresh=0.05,
                                       db_use=c("GO"))
-plot_gsea_hmap_w_similarity(pbmc_container,factor_select=1,direc='down',thresh=.05,
+plot_gsea_hmap_w_similarity(pbmc_container,factor_select=1,direc='up',thresh=.05,
                             exclude_words=c('regulation','positive','negative'))
-plot_gsea_sub(pbmc_container,thresh=.05,clust_select=7)
+plot_gsea_sub(pbmc_container,thresh=.05,clust_select=1)
 
-## f4 sets to show on loading hmap
+## f1 sets to show on loading hmap
 gsets <- c("GOBP_RESPONSE_TO_TYPE_I_INTERFERON",
            "GOBP_RESPONSE_TO_INTERFERON_GAMMA",
+           "GOBP_PROTEOLYSIS",
            "GOBP_TUMOR_NECROSIS_FACTOR_MEDIATED_SIGNALING_PATHWAY",
-           "GOBP_PATTERN_RECOGNITION_RECEPTOR_SIGNALING_PATHWAY",
-           "GOBP_RECEPTOR_SIGNALING_PATHWAY_VIA_STAT",
            "GOBP_INTERLEUKIN_1_PRODUCTION",
+           "GOBP_TUMOR_NECROSIS_FACTOR_SUPERFAMILY_CYTOKINE_PRODUCTION",
            "GOBP_MYELOID_LEUKOCYTE_ACTIVATION",
-           "GOBP_POSITIVE_REGULATION_OF_LEUKOCYTE_PROLIFERATION",
-           "GOBP_REGULATORY_T_CELL_DIFFERENTIATION")
+           "GOBP_INTERLEUKIN_6_PRODUCTION",
+           "GOBP_REGULATORY_T_CELL_DIFFERENTIATION",
+           "GOBP_APOPTOTIC_SIGNALING_PATHWAY",
+           "GOBP_POSITIVE_REGULATION_OF_MITOCHONDRION_ORGANIZATION",
+           "GOBP_CELL_CYCLE",
+           "GOBP_MACROMOLECULE_CATABOLIC_PROCESS")
 
 gset_cmap <- c('blue',
                'black',
@@ -120,7 +124,13 @@ gset_cmap <- c('blue',
                'black',
                'orange',
                'black',
-               'forest green')
+               'forest green',
+               'black',
+               'black',
+               'black',
+               'black')
+#######
+
 
 names(gset_cmap) <- gsets
 
@@ -139,7 +149,7 @@ dev.off()
 
 hm_list <- plot_select_sets(pbmc_container, 1, gsets, color_sets=gset_cmap, 
                             cl_rows=F, myfontsize=6.5, h_w=c(6,6.5))
-pdf(file = "/home/jmitchel/figures/for_paper_v2/lupus_f1_go.pdf", useDingbats = FALSE,
+pdf(file = "/home/jmitchel/figures/for_paper_v2/lupus_f1_go2.pdf", useDingbats = FALSE,
     width = 12, height = 5)
 hm_list
 dev.off()

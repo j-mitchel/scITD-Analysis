@@ -113,6 +113,12 @@ lig_mod_fact <- plot_mod_and_lig(pbmc_container,factor_select=1,mod_ct='B',mod=1
 lig_mod_fact
 dev.off()
 
+lig_mod_fact <- plot_mod_and_lig(pbmc_container,factor_select=3,mod_ct='Th',mod=9,lig_ct='cDC',lig='THBS1')
+# pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_THBS1_trio.pdf", useDingbats = FALSE,
+#     width = 6, height = 5)
+lig_mod_fact
+dev.off()
+
 
 ## extracting the pvalues for these two...
 # running code within the compute_LR_interact fn
@@ -128,6 +134,9 @@ pbmc_container$lr_res['TNFSF13B_cMono_TNFRSF13B','B_m1']
 which(rownames(myres_mat)=='TNFSF13B_cMono_TNFRSF13B')
 10**(-fact_res2[39,1])
 
+pbmc_container$lr_res['THBS1_cDC_CD47','Th_m9']
+which(rownames(myres_mat)=='THBS1_cDC_CD47')
+10**(-fact_res2[35,3])
 
 # getting GO enrichment HMAPs for modules
 ctypes <- c('Th')

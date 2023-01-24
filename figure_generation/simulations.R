@@ -320,6 +320,7 @@ tmp2 <- tmp +
   theme(plot.title = element_text(hjust = 0.5),
         legend.text = element_text(size=15))
 
+### Figure S1E right top
 # jpeg("/home/jmitchel/figures/for_paper/sim_v3_umap_proc1.jpg")
 tmp2
 # dev.off()
@@ -334,11 +335,25 @@ tmp2 <- tmp +
   theme(plot.title = element_text(hjust = 0.5),
         legend.text = element_text(size=15))
 
+### Figure S1E right bottom
 # jpeg("/home/jmitchel/figures/for_paper/sim_v3_umap_proc2.jpg")
 tmp2
 # dev.off()
 
+tmp <- DimPlot(pbmc, reduction = "umap",group.by = 'donors') + NoLegend()
+tmp2 <- tmp +
+  ggtitle('Colored by donor') +
+  xlab('UMAP 1') +
+  ylab('UMAP 2') +
+  # scale_color_brewer(palette="Dark2") +
+  labs(color='') +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5),legend.position = "none")
 
+### Figure S1E left
+# pdf("/home/jmitchel/figures/scITD_revision_figs2/sim_umap_donors.pdf", width = 4, height = 4)
+tmp2
+# dev.off()
 
 
 
@@ -483,6 +498,7 @@ pbmc_container <- determine_ranks_tucker(pbmc_container, max_ranks_test=c(7,10),
                                          scale_var=TRUE,
                                          var_scale_power=.5)
 
+### Figure S1G
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/sim_v3_rank_determination.pdf", useDingbats = FALSE,
 #     width = 7, height = 7)
 pbmc_container$plots$rank_determination_plot
@@ -642,6 +658,7 @@ for (cp in unique(tmp$cells_per)) {
 tmp2 <- cbind.data.frame(tmp2_means,tmp2_process,tmp2_cells_per)
 colnames(tmp2) <- c('auc_mean','pr','mcp')
 
+### Figure S1F
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/sim_AUC_vs_ncells.pdf", useDingbats = FALSE,
 #     width = 5, height = 5)
 ggplot(tmp,aes(x=cells_per,y=auc_val,color=process)) +
@@ -658,7 +675,45 @@ ggplot(tmp,aes(x=cells_per,y=auc_val,color=process)) +
 # ## save all results
 # save.image(file='/home/jmitchel/data/sim_data/sim_v3.RData')
 
+# load up data again so can run stability analysis
+load('/home/jmitchel/data/sim_data/sim_v3.RData')
 
-## see figure_1_code.R file for in vitro data downsampling plot generation
+
+## running the stability analysis for current decomposition
+container <- get_min_sig_genes(container, donor_rank_range=c(2:5), gene_ranks=8,
+                               use_lm=TRUE, tucker_type='regular',
+                               rotation_type='hybrid',
+                               n.cores = 5, thresh=0.05)
+
+p <- container[["plots"]][["min_sig_genes"]]
+p <- p + 
+  xlab('Total number of factors') +
+  scale_x_continuous(breaks = seq(0, 4, by = 1)) +
+  theme_bw()
+p
+
+### Figure S1I
+pdf("/home/jmitchel/figures/scITD_revision_figs2/sim_min_sig_genes.pdf", width = 4, height = 4)
+p
+dev.off()
+
+
+container <- run_stability_analysis(container,ranks=c(5,8),n_iterations=100,subset_type='subset', sub_prop=.85)
+
+container$plots$stability_plot_dsc <- container$plots$stability_plot_dsc + theme_bw()
+container$plots$stability_plot_lds <- container$plots$stability_plot_lds + theme_bw()
+
+
+### Figure S1H top
+pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/sim_stability_dsc.pdf", useDingbats = FALSE,
+    width = 4, height = 3.5)
+container$plots$stability_plot_dsc
+dev.off()
+
+### Figure S1H bottom
+pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/sim_stability_lds.pdf", useDingbats = FALSE,
+    width = 4, height = 3.5)
+container$plots$stability_plot_lds
+dev.off()
 
 

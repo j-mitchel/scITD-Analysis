@@ -1,100 +1,10 @@
 library(scITD)
 library(ComplexHeatmap)
 
-##### starting with PBMC dataset from van der Wijst et. al (2018)
-### see preprocessing/vdw_preprocessing.R for code used to generate the follwing objects
-# counts matrix
-pbmc_counts <- readRDS('/home/jmitchel/data/van_der_wijst/pbmc_counts_v2.rds')
-
-# meta data matrix
-pbmc_meta <- readRDS('/home/jmitchel/data/van_der_wijst/pbmc_meta_v2.rds')
-
-# ensembl to gene name conversions
-feature.names <- readRDS('/home/jmitchel/data/van_der_wijst/genes.rds')
-
-# change names of ctypes to match those from sle dataset
-pbmc_meta$ctypes <- sapply(as.character(pbmc_meta$ctypes),function(x){
-  if (x=='CD4+ T') {
-    return('Th')
-  } else if (x=='cMonocyte') {
-    return('cMono')
-  } else if (x=='CD8+ T') {
-    return('Tc')
-  } else {
-    return(x)
-  }
-})
-
-pbmc_meta$ctypes <- as.factor(pbmc_meta$ctypes)
-
-# set up project parameters
-param_list <- initialize_params(ctypes_use = c("Th", "Tc", "cMono", "CD56(dim) NK", "B"),
-                                ncores = 30, rand_seed = 10)
-
-pbmc_container <- make_new_container(count_data=pbmc_counts, meta_data=pbmc_meta,
-                                     gn_convert = feature.names, params=param_list,
-                                     label_donor_sex = TRUE)
-
-pbmc_container <- form_tensor(pbmc_container, donor_min_cells=5,
-                              norm_method='trim', scale_factor=10000,
-                              vargenes_method='norm_var_pvals', vargenes_thresh=.15,
-                              scale_var = TRUE, var_scale_power = 1.5)
-
-pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(6,10),
-                                 tucker_type = 'regular', rotation_type = 'ica_dsc')
-
-
-# get factor-meta data associations
-pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('sex','lanes'),
-                                        stat_use='pval')
-
-# plot donor scores
-pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('lanes'),
-                                    show_donor_ids = TRUE,
-                                    cluster_by_meta='lanes',
-                                    add_meta_associations=TRUE)
-
-# pdf(file = "/home/jmitchel/figures/for_paper_v2/pbmc_dscores2.pdf", useDingbats = FALSE,
-#     width = 6, height = 6.5)
-pbmc_container$plots$donor_matrix
-# dev.off()
-
-
-# get significant genes
-pbmc_container <- get_lm_pvals(pbmc_container)
-
-## get loadings plots (for paper)
-pbmc_container <- get_all_lds_factor_plots(pbmc_container, use_sig_only=TRUE,
-                                           nonsig_to_zero=TRUE,
-                                           sig_thresh=.01,
-                                           display_genes=F,
-                                           gene_callouts = TRUE,
-                                           callout_n_gene_per_ctype=5,
-                                           show_var_explained = FALSE)
-
-
-pdf(file = "/home/jmitchel/figures/for_paper_v2/pbmc_loadings_hbb_factor.pdf", useDingbats = FALSE,
-    width = 4, height = 3.5)
-draw(pbmc_container[["plots"]][["all_lds_plots"]][["5"]],
-     annotation_legend_list = pbmc_container[["plots"]][["all_legends"]][["5"]],
-     legend_grouping = "original",
-     newpage=TRUE)
-dev.off()
-
-
-
-
-
-
-
-
-
-
-
-
 
 ##### now doing batch analysis with the SLE dataset
-# load up the subsetted dataset
+# load up the lupus dataset: see preprocessing/lupus_preprocessing.R 
+# for code used to generate this object
 pbmc <- readRDS('/home/jmitchel/data/lupus_data/lupus_subsetted_seurat_v3.rds')
 
 # converting shorthand cell type names to full names
@@ -157,6 +67,7 @@ pbmc_container <- plot_donor_matrix(pbmc_container, meta_vars=c('pool'),
                                     show_donor_ids = FALSE,
                                     add_meta_associations='rsq')
 
+### Supplementary Note 2 Figure A
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/lupus_batch_dscores.pdf", useDingbats = FALSE,
 #     width = 7, height = 6.5)
 pbmc_container$plots$donor_matrix
@@ -166,60 +77,19 @@ pbmc_container$plots$donor_matrix
 pbmc_container <- get_lm_pvals(pbmc_container)
 
 
-# show loadings plots
-pdf(file = "/home/jmitchel/figures/for_paper_v2/batch_lds_f1.pdf", useDingbats = FALSE,
-    width = 3.5, height = 4.5)
-# pbmc_container <- plot_loadings_annot(pbmc_container, factor_select=6, use_sig_only=TRUE, nonsig_to_zero=TRUE, sig_thresh=0.05, display_genes=FALSE,
-#                                       gene_callouts=F)
+### Supplementary Note 2 Figure B left
+# pdf(file = "/home/jmitchel/figures/for_paper_v2/batch_lds_f1.pdf", useDingbats = FALSE,
+#     width = 3.5, height = 4.5)
 pbmc_container <- plot_loadings_annot(pbmc_container, factor_select=1, use_sig_only=TRUE, nonsig_to_zero=TRUE, sig_thresh=0.05, display_genes=FALSE,
                                       gene_callouts=F)
-dev.off()
-
-pdf(file = "/home/jmitchel/figures/for_paper_v2/batch_lds_f3.pdf", useDingbats = FALSE,
-    width = 3.5, height = 4.5)
-pbmc_container <- plot_loadings_annot(pbmc_container, factor_select=3, use_sig_only=TRUE, nonsig_to_zero=TRUE, sig_thresh=0.05, display_genes=FALSE,
-                                      gene_callouts=F)
-dev.off()
-
-
-
-
-
-
-
-
-
-##### computing loadings correlations
-# plot is in supplemental figure s4 but is part of this analysis
-cormat_dmat_rot <- cor(t(pbmc_container$tucker_results[[2]]))
-# colnames(cormat_dmat_rot) <- sapply(1:ncol(cormat_dmat_rot),function(x){paste0('Factor ',x)})
-# rownames(cormat_dmat_rot) <- sapply(1:nrow(cormat_dmat_rot),function(x){paste0('Factor ',x)})
-colnames(cormat_hybrid_rot) <- as.character(1:ncol(cormat_hybrid_rot))
-rownames(cormat_hybrid_rot) <- as.character(1:nrow(cormat_hybrid_rot))
-
-lds_hmap <- Heatmap(cormat_dmat_rot, name = "Pearson r",
-                    cluster_columns = TRUE,
-                    cluster_rows = TRUE,
-                    column_names_gp = gpar(fontsize = 10),
-                    row_names_gp = gpar(fontsize = 10),
-                    col = col_fun,border=TRUE, show_column_names=TRUE,
-                    show_row_names=TRUE,show_row_dend = FALSE,
-                    show_column_dend = FALSE, row_names_side = 'left',
-                    cell_fun = function(j, i, x, y, width, height, fill) {
-                      grid::grid.text(sprintf("%.2f", cormat_dmat_rot[i, j]), x, y, gp = gpar(fontsize = 10))
-                    })
-
-# pdf(file = "/home/jmitchel/figures/for_paper_v2/batch_lds_cor.pdf", useDingbats = FALSE,
-#     width = 10, height = 10)
-lds_hmap
 # dev.off()
 
-
-
-
-
-
-
+### Supplementary Note 2 Figure B right
+# pdf(file = "/home/jmitchel/figures/for_paper_v2/batch_lds_f3.pdf", useDingbats = FALSE,
+#     width = 3.5, height = 4.5)
+pbmc_container <- plot_loadings_annot(pbmc_container, factor_select=3, use_sig_only=TRUE, nonsig_to_zero=TRUE, sig_thresh=0.05, display_genes=FALSE,
+                                      gene_callouts=F)
+# dev.off()
 
 
 
@@ -475,10 +345,12 @@ p <- ggplot(res1[[2]],aes(x = as.factor(all_t), y = all_p)) +
   theme(plot.title = element_text(hjust = 0.5,size=18),
         axis.text=element_text(size=12),
         axis.title=element_text(size=14))
-pdf(file = "/home/jmitchel/figures/for_paper_v2/soup_any_up.pdf", useDingbats = FALSE,
-    width = 3.5, height = 4)
+
+### Supplementary Note 2 Figure C left
+# pdf(file = "/home/jmitchel/figures/for_paper_v2/soup_any_up.pdf", useDingbats = FALSE,
+#     width = 3.5, height = 4)
 p
-dev.off()
+# dev.off()
 
 ## plotting soup fraction for genes upreg in all ctypes versus those upreg only in some ctypes
 res2 <- test_soup_association(pbmc_container,1,'up','all_v_some',soupProf)
@@ -490,10 +362,12 @@ p <- ggplot(res2[[2]],aes(x = as.factor(all_t), y = all_p)) +
   theme(plot.title = element_text(hjust = 0.5,size=18),
         axis.text=element_text(size=12),
         axis.title=element_text(size=14))
-pdf(file = "/home/jmitchel/figures/for_paper_v2/soup_all_v_some.pdf", useDingbats = FALSE,
-    width = 3.5, height = 4)
+
+### Supplementary Note 2 Figure C right
+# pdf(file = "/home/jmitchel/figures/for_paper_v2/soup_all_v_some.pdf", useDingbats = FALSE,
+#     width = 3.5, height = 4)
 p
-dev.off()
+# dev.off()
 
 
 
@@ -668,10 +542,11 @@ p <- ggplot(full_df_batch,aes(x = all_f, y = all_p, fill = all_t)) +
         axis.text=element_text(size=10),
         axis.title=element_text(size=14))
 
-pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_batch_gc.pdf", useDingbats = FALSE,
-    width = 14.5, height = 4)
+### Supplementary Note 2 Figure D top
+# pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_batch_gc.pdf", useDingbats = FALSE,
+#     width = 14.5, height = 4)
 p
-dev.off()
+# dev.off()
 
 
 # plotting gc associations for non-batch-associated factors
@@ -697,10 +572,11 @@ p <- ggplot(full_df_no_batch_small,aes(x = all_f, y = all_p, fill = all_t)) +
         axis.text=element_text(size=10),
         axis.title=element_text(size=14))
 
-pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_no_batch_gc.pdf", useDingbats = FALSE,
-    width = 11.75, height = 4)
+### Supplementary Note 2 Figure D bottom
+# pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_no_batch_gc.pdf", useDingbats = FALSE,
+#     width = 11.75, height = 4)
 p
-dev.off()
+# dev.off()
 
 
 
@@ -781,27 +657,3 @@ all_pv_adj <- p.adjust(all_pv,method='fdr')
 print(all_pv_adj)
 
 
-
-
-
-
-
-
-## plot for figure two showing plateau of batch factors
-## testing out my plot for looking at number of batch factors for total number decomposed
-pbmc_container <- get_num_batch_ranks(
-  pbmc_container,
-  donor_ranks_test=3:45,
-  gene_ranks=37,
-  batch_var='pool',
-  thresh = 0.5,
-  tucker_type = "regular",
-  rotation_type = "ica_dsc"
-)
-pbmc_container[["plots"]][["num_batch_factors"]]
-
-# from within code saving just the middle plot
-pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_batch_increase.pdf", useDingbats = FALSE,
-    width = 5, height = 4)
-thresh_plot
-dev.off()

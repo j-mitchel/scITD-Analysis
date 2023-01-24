@@ -1,3 +1,4 @@
+
 library(scITD)
 library(ComplexHeatmap)
 library(ggplot2)
@@ -13,16 +14,36 @@ embed <- read.table("/home/jmitchel/data/lupus_data/demuxlet_tsne.csv",
 embed <- embed[embed$multiplets=='singlet',]
 embed <- embed[embed$cell %in% c("CD4 T cells","CD14+ Monocytes"),]
 
+embed$dnr_stim <- sapply(1:nrow(embed),function(x){
+  paste0(embed$ind[x],'_',embed$stim[x])
+})
+embed$dnr_stim <- as.factor(embed$dnr_stim)
+levels(embed$dnr_stim) <- c('1','9','2','10','3','11','4','12','5','13','6','14','7','15','8','16')
+embed$dnr_stim <- factor(embed$dnr_stim,levels=as.character(c(1:16)))
+
 # create embedding plot
-myembed <- ggplot(embed,aes(x=tsne1,y=tsne2,color=stim)) +
+myembed1 <- ggplot(embed,aes(x=tsne1,y=tsne2,color=dnr_stim)) +
+  geom_point() +
+  labs(color = "Sample") +
+  theme_bw()
+
+### Figure 1B right top
+# pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/cd4_cM_dnr_embed.pdf", useDingbats = FALSE,
+#     width = 6, height = 4)
+myembed1
+# dev.off()
+
+myembed2 <- ggplot(embed,aes(x=tsne1,y=tsne2,color=stim)) +
   geom_point() +
   labs(color = "Group") +
   theme_bw()
 
-# pdf(file = "/home/jmitchel/figures/for_paper/cd4_cM_stim_embed.pdf", useDingbats = FALSE,
+### Figure 1B right bottom
+# pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/cd4_cM_stim_embed.pdf", useDingbats = FALSE,
 #     width = 6, height = 4)
-myembed
+myembed2
 # dev.off()
+
 
 rm(list=ls())
 
@@ -202,6 +223,7 @@ myhmap <- Heatmap(pb_total,
                   col = col_fun,
                   right_annotation = myannot)
 
+### Figure S1B
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/demuxlet_de_hmap.pdf", useDingbats = FALSE,
 #     width = 4.75, height = 5.5)
 myhmap
@@ -231,8 +253,26 @@ pbmc_container <- form_tensor(pbmc_container, donor_min_cells=5,
                               vargenes_method='norm_var', vargenes_thresh=1500,
                               scale_var = TRUE, var_scale_power = .5)
 
+# pbmc_container <- get_min_sig_genes(pbmc_container, donor_rank_range=c(2:5), gene_ranks=8,
+#                                use_lm=TRUE, tucker_type='regular',
+#                                rotation_type='ica_dsc',
+#                                n.cores = 1, thresh=0.05)
+# pbmc_container[["plots"]][["min_sig_genes"]]
+
 pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(2,4),
                                  tucker_type = 'regular', rotation_type = 'ica_dsc')
+
+# flip sign of F1 so high scoring samples are the treatment ones (signs are arbitrary)
+pbmc_container$tucker_results[[1]][,1] <- pbmc_container$tucker_results[[1]][,1] * -1
+pbmc_container$tucker_results[[2]][1,] <- pbmc_container$tucker_results[[2]][1,] * -1
+
+pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('stim'),stat_use='pval')
+
+pbmc_container <- plot_donor_matrix(pbmc_container,
+                                    show_donor_ids = FALSE,
+                                    add_meta_associations='pval',h_w=c(10,8))
+pbmc_container$plots$donor_matrix
+
 
 # plotting just the first factor in the sample scores matrix
 pbmc_container$tucker_results[[1]] <- pbmc_container$tucker_results[[1]][,1,drop=FALSE]
@@ -240,16 +280,49 @@ pbmc_container[["exp_var"]] <- pbmc_container[["exp_var"]][1]
 
 pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('stim'),stat_use='pval')
 
-pbmc_container <- plot_donor_matrix(pbmc_container,
-                                    show_donor_ids = TRUE)
-# pdf(file = "/home/jmitchel/figures/for_paper_v2/demuxlet_scores.pdf", useDingbats = FALSE,
-#     width = 3, height = 6)
-pbmc_container$plots$donor_matrix
+f1 <- get_one_factor(pbmc_container,1)
+pbmc_container <- get_donor_meta(pbmc_container,additional_meta='stim')
+tmp <- cbind.data.frame(f1[[1]],pbmc_container$donor_metadata[rownames(f1[[1]]),'stim'])
+colnames(tmp) <- c('dsc','stim')
+p <- ggplot(tmp,aes(x=stim,y=dsc)) +
+  geom_dotplot(binaxis='y', stackdir='center',
+               stackratio=1, dotsize=1.5, binwidth = .01) +
+  ylab("Factor 1 scores") +
+  xlab("Treatment label") +
+  ylim(-.315,.35) +
+  theme_bw()
+p
+
+### Figure 1C
+# pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/demuxlet_scores_stim.pdf", useDingbats = FALSE,
+#     width = 3, height = 4)
+p
 # dev.off()
+
+
+# getting pvalue for this association
+summary(lm(dsc~stim,data=tmp))
+
+d_vec <- sapply(rownames(tmp),function(x){
+  return(strsplit(x,split='_')[[1]][[1]])
+})
+tmp$donor <- d_vec
+
+tmp1 <- tmp[tmp$stim=='ctrl',]
+rownames(tmp1) <- tmp1$donor
+tmp2 <- tmp[tmp$stim=='stim',]
+rownames(tmp2) <- tmp2$donor
+tmp2 <- tmp2[rownames(tmp1),]
+
+t.test(tmp1$dsc,tmp2$dsc)
+t.test(tmp1$dsc,tmp2$dsc,paired = T)
+
 
 # rerun tucker to keep both factors
 pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(2,4),
                                  tucker_type = 'regular', rotation_type = 'ica_dsc')
+pbmc_container$tucker_results[[1]][,1] <- pbmc_container$tucker_results[[1]][,1] * -1
+pbmc_container$tucker_results[[2]][1,] <- pbmc_container$tucker_results[[2]][1,] * -1
 
 # get significant genes
 pbmc_container <- get_lm_pvals(pbmc_container)
@@ -267,7 +340,8 @@ pbmc_container <- plot_loadings_annot(pbmc_container, factor_select=1,
                                       show_var_explained = FALSE,
                                       clust_method = 'ward.D')
 
-# pdf(file = "/home/jmitchel/figures/for_paper_v2/demuxlet_loadings_v2.pdf", useDingbats = FALSE,
+### Figure 1D
+# pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/demuxlet_loadings_v3.pdf", useDingbats = FALSE,
 #     width = 5.25, height = 6)
 draw(pbmc_container[["plots"]][["all_lds_plots"]][["1"]],
      annotation_legend_list = pbmc_container[["plots"]][["all_legends"]][["1"]],
@@ -333,14 +407,15 @@ tmp <- as.data.frame(cbind(lds_both,fc_both,sig_both))
 colnames(tmp) <- c('loading','log2FC','sig_val')
 tmp$sig_val <- tmp$sig_val<.01
 
-# pdf(file = "/home/jmitchel/figures/for_paper_v2/demuxlet_loading_vs_log2FC_v2.pdf", useDingbats = FALSE,
+### Figure S1C
+# pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/demuxlet_loading_vs_log2FC_v3.pdf", useDingbats = FALSE,
 #     width = 4, height = 1.5)
 ggplot(tmp,aes(x=log2FC,y=loading,color=sig_val)) +
   geom_point(alpha = .1, pch=19) +
   theme_bw() +
   scale_color_manual(values=c("#000000", "#FF0000")) +
   guides(color = 'none')
-dev.off()
+# dev.off()
 
 
 
@@ -382,6 +457,7 @@ rownames(tmp) <- gene_ct
 tmp$scITD_padj[tmp$scITD_padj<.0001] <- .0001
 tmp$DE_padj[tmp$DE_padj<.000000000000001] <- .000000000000001
 
+### Figure 1E
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/demuxlet_lm_vs_DEpval_v2.pdf", useDingbats = FALSE,
 #     width = 4.5, height = 3)
 ggplot(tmp,aes(x=-log(DE_padj,base=10),y=-log(scITD_padj,base=10))) +
@@ -419,7 +495,7 @@ sum(mask$DE_padj>(-log10(pv_thresh)) & mask$scITD_padj>(-log10(pv_thresh)))
 
 
 
-##### doing subsampling and recalculation of loadings-FC correlation (part of figure s1 but uses above data)
+##### doing subsampling and recalculation of loadings-FC correlation
 cor_helper <- function(tmp_casted_num,cd4.expressed.res,cd14.expressed.res) {
   lds_both <- c()
   fc_both <- c()
@@ -538,6 +614,7 @@ colnames(tmp2) <- c('spearman_cor','cells_donor_ctype')
 tmp <- tmp[tmp$cells_donor_ctype!=12,]
 tmp2 <- tmp2[tmp2$cells_donor_ctype!=12,]
 
+### Figure S1D
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/demux_loading_cor_subsamp3.pdf", useDingbats = FALSE,
 #     width = 4, height = 2.25)
 ggplot(tmp,aes(x=cells_donor_ctype,y=spearman_cor)) +

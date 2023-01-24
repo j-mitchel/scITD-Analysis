@@ -1,10 +1,18 @@
+
 library(scITD)
 library(Seurat)
 library(spqn) 
 library(RColorBrewer)
 library(iTALK)
 
-# load up the subsetted dataset
+
+### This script is intended for validating the performance of scITD LR analysis 
+# by using the signaling network information from NicheNet and comparing the 
+# results to a baseline LR inference model
+
+##### prepping the data the same way as in LR_analysis.R
+# load up the lupus dataset: see preprocessing/lupus_preprocessing.R 
+# for code used to generate this object
 pbmc <- readRDS('/home/jmitchel/data/lupus_data/lupus_subsetted_seurat_v3.rds')
 
 # converting shorthand cell type names to full names
@@ -95,127 +103,6 @@ pbmc_container <- get_gene_modules(pbmc_container,sft_thresh)
 lr_hmap <- compute_LR_interact(pbmc_container, lr_pairs, sig_thresh=.00000000005,
                                percentile_exp_rec=0.85, add_ld_fact_sig=TRUE)
 
-# pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_new_lr8.pdf", useDingbats = FALSE,
-#     width = 6, height = 7)
-lr_hmap
-# dev.off()
-
-
-lig_mod_fact <- plot_mod_and_lig(pbmc_container,factor_select=2,mod_ct='Th',mod=5,lig_ct='cMono',lig='ICOSLG')
-# pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_ICOSLG_trio2.pdf", useDingbats = FALSE,
-#     width = 6, height = 5)
-lig_mod_fact
-dev.off()
-
-lig_mod_fact <- plot_mod_and_lig(pbmc_container,factor_select=1,mod_ct='B',mod=1,lig_ct='cMono',lig='TNFSF13B')
-# pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_TNFSF13B_trio3.pdf", useDingbats = FALSE,
-#     width = 6, height = 5)
-lig_mod_fact
-dev.off()
-
-lig_mod_fact <- plot_mod_and_lig(pbmc_container,factor_select=3,mod_ct='Th',mod=9,lig_ct='cDC',lig='THBS1')
-# pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_THBS1_trio.pdf", useDingbats = FALSE,
-#     width = 6, height = 5)
-lig_mod_fact
-dev.off()
-
-
-## extracting the pvalues for these two...
-# running code within the compute_LR_interact fn
-sig_thresh=.0000001
-myres_mat <- pbmc_container$lr_res # at 285
-container=pbmc_container
-
-pbmc_container$lr_res['ICOSLG_cMono_ICOS','Th_m5']
-which(rownames(myres_mat)=='ICOSLG_cMono_ICOS')
-10**(-fact_res2[47,2])
-
-pbmc_container$lr_res['TNFSF13B_cMono_TNFRSF13B','B_m1']
-which(rownames(myres_mat)=='TNFSF13B_cMono_TNFRSF13B')
-10**(-fact_res2[39,1])
-
-pbmc_container$lr_res['THBS1_cDC_CD47','Th_m9']
-which(rownames(myres_mat)=='THBS1_cDC_CD47')
-10**(-fact_res2[35,3])
-
-# getting GO enrichment HMAPs for modules
-ctypes <- c('Th')
-modules <- c(5)
-
-# using more stringent p-val threshold for figure plot
-# mod_enr <- plot_multi_module_enr(pbmc_container, ctypes, modules, sig_thresh=.002, db_use=c('GO'),max_plt_pval=.002,h_w=c(7,3))
-mod_enr <- plot_multi_module_enr(pbmc_container, ctypes, modules, sig_thresh=.005, 
-                                 db_use=c('GO','BioCarta'),max_plt_pval=.005,h_w=c(14,2))
-
-# pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_ICOSLG_gsets2.pdf", useDingbats = FALSE,
-#     width = 5, height = 8)
-mod_enr
-dev.off()
-
-# also checking the enrichment of the TNFSF13B B module
-ctypes <- c('B')
-modules <- c(1)
-mod_enr <- plot_multi_module_enr(pbmc_container, ctypes, modules, sig_thresh=.05, 
-                                 db_use=c('GO','Reactome','KEGG'),
-                                 max_plt_pval=.05,h_w=c(20,5))
-mod_enr
-
-
-
-#### computing enrichment of modules with the nichenet scores
-ligand_target_matrix = readRDS(url("https://zenodo.org/record/3260758/files/ligand_target_matrix.rds"))
-
-## ICOSLG target module first
-test = ligand_target_matrix[,'ICOSLG']
-t_mod = pbmc_container[["module_genes"]][["Th"]]
-mymod <- c(5)
-g_in_mod <- names(t_mod)[t_mod%in%mymod]
-g_not_mod <- names(t_mod)[!(t_mod%in%mymod)]
-tmp <- cbind.data.frame(c(g_in_mod,g_not_mod),
-                        c(rep('Th_m5',length(g_in_mod)),rep('other',length(g_not_mod))))
-colnames(tmp) <- c('gn','in_mod')
-tmp$in_mod <- factor(tmp$in_mod,levels=c('Th_m5','other'))
-target_scores <- test[tmp$gn]
-tmp$target_scores <- target_scores
-tmp <- tmp[which(!is.na(target_scores)),]
-p <- ggplot(tmp,aes(x=as.factor(in_mod),y=target_scores)) +
-  geom_boxplot(notch=TRUE) +
-  ylab('ICOSLG NicheNet regulatory potential') +
-  xlab('') +
-  theme_bw()
-test_res <- wilcox.test(target_scores~in_mod,data=tmp)
-print(test_res$p.value)
-
-pdf(file = "/home/jmitchel/figures/for_paper_v2/ICOSLG_NicheNet_enr2.pdf", useDingbats = FALSE,
-    width = 4, height = 3.5)
-p
-dev.off()
-
-
-
-
-## TNFSF13B target module now
-test = ligand_target_matrix[,'TNFSF13B']
-b_mod = pbmc_container[["module_genes"]][["B"]]
-mymod <- c(1)
-g_in_mod <- names(b_mod)[b_mod%in%mymod]
-g_not_mod <- names(b_mod)[!(b_mod%in%mymod)]
-tmp <- cbind.data.frame(c(g_in_mod,g_not_mod),
-                        c(rep('B_m1',length(g_in_mod)),rep('other',length(g_not_mod))))
-colnames(tmp) <- c('gn','in_mod')
-tmp$in_mod <- factor(tmp$in_mod,levels=c('B_m1','other'))
-target_scores <- test[tmp$gn]
-tmp$target_scores <- target_scores
-tmp <- tmp[which(!is.na(target_scores)),]
-p <- ggplot(tmp,aes(x=as.factor(in_mod),y=target_scores)) +
-  geom_boxplot(notch=TRUE) +
-  ylab('TNFSF13B NicheNet regulatory potential') +
-  xlab('') +
-  theme_bw()
-test_res <- wilcox.test(target_scores~in_mod,data=tmp)
-print(test_res$p.value)
-
-p
 
 
 
@@ -231,9 +118,9 @@ p
 
 
 
-##### benchmarking analysis
 
-## fns to use in benchmarking
+
+## fns to use in validation
 test_lr_validity <- function(container,lr_test,ligand_target_matrix) {
   # all_pvals <- c()
   print(length(lr_test))
@@ -431,8 +318,9 @@ get_rand_chan <- function(container,lr_pairs,n_samp) {
   return(my_samp)
 }
 
-
-
+# load the NicheNet data
+ligand_target_matrix = readRDS(url("https://zenodo.org/record/3260758/files/ligand_target_matrix.rds"))
+# saveRDS(ligand_target_matrix,file="/home/jmitchel/data/NicheNet/ligand_target_matrix.rds")
 
 # parse scITD results for cell chat db which was used in above analysis
 scITD_channels <- parse_scITD_LR_out(pbmc_container)
@@ -473,10 +361,11 @@ chan_bplot <- ggplot(tmp,aes(x=channel,y=adj_pval)) +
         axis.ticks.x = element_blank(),
         plot.title = element_text(hjust = 0.5))
 
+### Figure S4B
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/LR_chan_bplot3_2.pdf", useDingbats = FALSE,
 #     width = 6, height = 4.5)
 chan_bplot
-dev.off()
+# dev.off()
 
 
 
@@ -607,6 +496,7 @@ comp_bplot_frac <- ggplot(res_dat,aes(x=db,y=percent_enr,fill=method)) +
 
 combined_plt <- cowplot::plot_grid(comp_bplot_size,comp_bplot_frac,nrow=1, rel_widths = c(.7,1.1))
 
+### Figure S4C
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/LR_all_db_bplot3.pdf", useDingbats = FALSE,
 #     width = 7.5, height = 3.5)
 combined_plt
@@ -626,6 +516,7 @@ combined_plt
 
 
 ##### testing for association between Treg proportions and F3
+# file generated in aSLE_decomp_associations.R
 pbmc_container$subclusters <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_subcluster_data.rds')
 t4_sub <- colnames(pbmc_container$scMinimal_ctype[['Th']]$count_data)
 
@@ -711,6 +602,4 @@ colnames(tmp) <- c('dsc','my_balance')
 lmres <- summary(lm(my_balance~dsc,data=tmp))
 pval <- stats::pf(lmres$fstatistic[1],lmres$fstatistic[2],lmres$fstatistic[3],lower.tail=FALSE)
 print(pval)
-
-
 

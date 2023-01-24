@@ -6,7 +6,8 @@ library(circlize)
 # comparison of three decompositions using the same data tensor
 
 ##### first need to generate the tensor
-# load up the subsetted dataset
+# load up the lupus dataset: see preprocessing/lupus_preprocessing.R 
+# for code used to generate this object
 pbmc <- readRDS('/home/jmitchel/data/lupus_data/lupus_subsetted_seurat_v3.rds')
 
 # converting shorthand cell type names to full names
@@ -65,10 +66,6 @@ pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(7,20),
                                  tucker_type = 'regular', rotation_type = 'hybrid')
 hybrid <- pbmc_container$tucker_results
 
-pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(7,20),
-                                 tucker_type = 'regular', rotation_type = 'ica_lds')
-ica_lds <- pbmc_container$tucker_results
-
 pbmc_container <- run_tucker_ica(pbmc_container, ranks=c(9,20),
                                  tucker_type = 'regular', rotation_type = 'ica_dsc') 
 ica_dmat <- pbmc_container$tucker_results
@@ -117,106 +114,20 @@ plot_ifn_associations <- function(container,tuck_res,ifn_genes) {
 ifn_core <- c('HERC5', 'IFI27', 'IRF7', 'ISG15', 'LY6E', 'MX1', 'OAS2', 'OAS3',
               'RSAD2', 'USP18', 'GBP5') # from Davenport et al. (2018) https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6195724/
 p = plot_ifn_associations(pbmc_container,hybrid,ifn_core)
-pdf(file = "/home/jmitchel/figures/for_paper_v2/hybrid_ifn2.pdf", useDingbats = FALSE,
-    width = 4.75, height = 3)
-p
-dev.off()
 
-p = plot_ifn_associations(pbmc_container,ica_lds,ifn_core)
-pdf(file = "/home/jmitchel/figures/for_paper_v2/ica_lds_ifn2.pdf", useDingbats = FALSE,
-    width = 4.75, height = 3)
+### Supplementary Note 1 Figure B top
+# pdf(file = "/home/jmitchel/figures/for_paper_v2/hybrid_ifn2.pdf", useDingbats = FALSE,
+#     width = 4.75, height = 3)
 p
-dev.off()
+# dev.off()
 
 p = plot_ifn_associations(pbmc_container,ica_dmat,ifn_core)
-pdf(file = "/home/jmitchel/figures/for_paper_v2/ica_dmat_ifn2.pdf", useDingbats = FALSE,
-    width = 5.75, height = 3)
+
+### Supplementary Note 1 Figure B bottom
+# pdf(file = "/home/jmitchel/figures/for_paper_v2/ica_dmat_ifn2.pdf", useDingbats = FALSE,
+#     width = 5.75, height = 3)
 p
-dev.off()
-
-
-
-
-
-
-
-
-
-
-##### looking at correlations of loadings for the different rotation
-# first is dmat rot
-cormat_dmat_rot <- cor(t(ica_dmat[[2]]))
-# colnames(cormat_dmat_rot) <- sapply(1:ncol(cormat_dmat_rot),function(x){paste0('Factor ',x)})
-# rownames(cormat_dmat_rot) <- sapply(1:nrow(cormat_dmat_rot),function(x){paste0('Factor ',x)})
-colnames(cormat_dmat_rot) <- as.character(1:ncol(cormat_dmat_rot))
-rownames(cormat_dmat_rot) <- as.character(1:nrow(cormat_dmat_rot))
-
-col_fun = colorRamp2(c(-1, 0, 1), c("blue", "white", "red"))
-lds_hmap <- Heatmap(cormat_dmat_rot, name = "Pearson r",
-                    cluster_columns = TRUE,
-                    cluster_rows = TRUE,
-                    column_names_gp = gpar(fontsize = 10),
-                    row_names_gp = gpar(fontsize = 10),
-                    col = col_fun,border=TRUE, show_column_names=TRUE,
-                    show_row_names=TRUE,show_row_dend = FALSE,
-                    show_column_dend = FALSE, row_names_side = 'left',
-                    cell_fun = function(j, i, x, y, width, height, fill) {
-                      grid::grid.text(sprintf("%.2f", cormat_dmat_rot[i, j]), x, y, gp = gpar(fontsize = 10))
-                    })
-
-pdf(file = "/home/jmitchel/figures/for_paper_v2/ica_dmat_lds_cor2.pdf", useDingbats = FALSE,
-    width = 5, height = 4.5)
-lds_hmap
-dev.off()
-
-
-cormat_hybrid_rot <- cor(t(hybrid[[2]]))
-# colnames(cormat_hybrid_rot) <- sapply(1:ncol(cormat_hybrid_rot),function(x){paste0('Factor ',x)})
-# rownames(cormat_hybrid_rot) <- sapply(1:nrow(cormat_hybrid_rot),function(x){paste0('Factor ',x)})
-colnames(cormat_hybrid_rot) <- as.character(1:ncol(cormat_hybrid_rot))
-rownames(cormat_hybrid_rot) <- as.character(1:nrow(cormat_hybrid_rot))
-
-lds_hmap <- Heatmap(cormat_hybrid_rot, name = "Pearson r",
-                    cluster_columns = TRUE,
-                    cluster_rows = TRUE,
-                    column_names_gp = gpar(fontsize = 10),
-                    row_names_gp = gpar(fontsize = 10),
-                    col = col_fun,border=TRUE, show_column_names=TRUE,
-                    show_row_names=TRUE,show_row_dend = FALSE,
-                    show_column_dend = FALSE, row_names_side = 'left',
-                    cell_fun = function(j, i, x, y, width, height, fill) {
-                      grid::grid.text(sprintf("%.2f", cormat_hybrid_rot[i, j]), x, y, gp = gpar(fontsize = 10))
-                    })
-
-pdf(file = "/home/jmitchel/figures/for_paper_v2/hybrid_lds_cor2.pdf", useDingbats = FALSE,
-    width = 5, height = 4.5)
-lds_hmap
-dev.off()
-
-
-
-cormat_lds_rot <- cor(t(ica_lds[[2]]))
-# colnames(cormat_lds_rot) <- sapply(1:ncol(cormat_lds_rot),function(x){paste0('Factor ',x)})
-# rownames(cormat_lds_rot) <- sapply(1:nrow(cormat_lds_rot),function(x){paste0('Factor ',x)})
-colnames(cormat_lds_rot) <- as.character(1:ncol(cormat_lds_rot))
-rownames(cormat_lds_rot) <- as.character(1:nrow(cormat_lds_rot))
-
-lds_hmap <- Heatmap(cormat_lds_rot, name = "Pearson r",
-                    cluster_columns = TRUE,
-                    cluster_rows = TRUE,
-                    column_names_gp = gpar(fontsize = 10),
-                    row_names_gp = gpar(fontsize = 10),
-                    col = col_fun,border=TRUE, show_column_names=TRUE,
-                    show_row_names=TRUE,show_row_dend = FALSE,
-                    show_column_dend = FALSE, row_names_side = 'left',
-                    cell_fun = function(j, i, x, y, width, height, fill) {
-                      grid::grid.text(sprintf("%.2f", cormat_lds_rot[i, j]), x, y, gp = gpar(fontsize = 10))
-                    })
-
-pdf(file = "/home/jmitchel/figures/for_paper_v2/ica_lds_lds_cor2.pdf", useDingbats = FALSE,
-    width = 5, height = 4.5)
-lds_hmap
-dev.off()
+# dev.off()
 
 
 
@@ -242,10 +153,11 @@ mf_association <- ggplot(tmp,aes(x=Ethnicity,y=dsc)) +
   coord_flip() +
   theme_bw()
 
-pdf(file = "/home/jmitchel/figures/for_paper_v2/ica_dmat_eth2.pdf", useDingbats = FALSE,
-    width = 3.5, height = 3.25)
+### Supplementary Note 1 Figure C bottom
+# pdf(file = "/home/jmitchel/figures/for_paper_v2/ica_dmat_eth2.pdf", useDingbats = FALSE,
+#     width = 3.5, height = 3.25)
 mf_association
-dev.off()
+# dev.off()
 
 
 # now for hybrid
@@ -260,10 +172,11 @@ mf_association <- ggplot(tmp,aes(x=Ethnicity,y=dsc)) +
   coord_flip() +
   theme_bw()
 
-pdf(file = "/home/jmitchel/figures/for_paper_v2/hybrid_eth2.pdf", useDingbats = FALSE,
-    width = 3.5, height = 3.25)
+### Supplementary Note 1 Figure C top
+# pdf(file = "/home/jmitchel/figures/for_paper_v2/hybrid_eth2.pdf", useDingbats = FALSE,
+#     width = 3.5, height = 3.25)
 mf_association
-dev.off()
+# dev.off()
 
 
 

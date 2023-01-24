@@ -26,3 +26,7 @@ will store the updated packages in the project library, not affecting your user 
 renv::restore()
 ```
 
+When data is loaded in each analysis script, we indicate from which preprocessing
+script the processed data was derived from. You will need to download the data from its
+indicated sources and run the preprocessing scripts to get the objects used in the main
+analyses. Every plot from the paper is labeled in the script where it is produced.

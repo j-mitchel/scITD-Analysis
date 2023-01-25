@@ -2,6 +2,10 @@
 
 library(SeuratDisk)
 
+# raw data provided by original data generating authors (Perez et al.)
+# should be accessible through dbgap phs002812.v1.p1
+# Run through SLE_pool_preprocessing.ipynb first
+
 ### Batch: YE_7-19
 ### well: 1
 Convert("/home/jmitchel/data/lupus_data/SLE_droplets/YE_7-19/YE_7-19-1/raw_gene_bc_matrices_h5.h5ad", dest = "h5seurat", overwrite = TRUE)

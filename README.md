@@ -27,6 +27,6 @@ renv::restore()
 ```
 
 When data is loaded in each analysis script, we indicate from which preprocessing
-script the processed data was derived from. You will need to download the data from its
-indicated sources and run the preprocessing scripts to get the objects used in the main
-analyses. Every plot from the paper is labeled in the script where it is produced.
+script the processed data was derived from. You will need to download the data from the
+source indicated in the respective preprocessing script sources and run the script. 
+Every plot from the paper is labeled in the script where it is produced.

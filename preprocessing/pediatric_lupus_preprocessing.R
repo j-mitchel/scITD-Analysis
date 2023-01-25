@@ -2,6 +2,8 @@
 library(Seurat)
 library(readxl)
 
+# The following data was downloaded from here:
+# https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE135779
 all_direc <- list.dirs('/home/jmitchel/data/pediatric_lupus/scRNA_raw')
 all_direc <- all_direc[2:length(all_direc)]
 names(all_direc) <- sapply(all_direc,function(x){
@@ -20,7 +22,9 @@ pbmc <- CreateSeuratObject(counts=dat)
 colnames(pbmc@meta.data)[1] <- 'donors'
 Idents(pbmc)<-rep(1,ncol(dat))
 
-# add meta data
+# add meta data:
+# from supplemental materials of their publication https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7442743/
+# Sheet name "ST1b-Clinical information"
 clin_vars <- read_excel('/home/jmitchel/data/pediatric_lupus/pediatric_lupus_clinical.xlsx')
 clin_vars <- as.data.frame(clin_vars)
 rownames(clin_vars) <- clin_vars$Names
@@ -77,31 +81,5 @@ pbmc <- readRDS(file='/home/jmitchel/data/pediatric_lupus/processed/pbmc_pediatr
 
 
 
-
-
-
-##### old code below, not used any more
-
-# pbmc[["percent.mt"]] <- PercentageFeatureSet(pbmc, pattern = "^MT-")
-# VlnPlot(pbmc, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, 
-#         group.by = NULL)
-# 
-# pbmc <- subset(pbmc, subset = nFeature_RNA > 400 & nFeature_RNA < 2500 & percent.mt < 20)
-# 
-# print(dim(pbmc))
-# 
-# # standard Seurat pipeline
-# pbmc = NormalizeData(pbmc)
-# pbmc = FindVariableFeatures(pbmc, verbose = F)
-# pbmc = ScaleData(pbmc, vars.to.regress = c("nFeature_RNA", "percent.mt"),
-#                       verbose = F)
-# pbmc = RunPCA(pbmc, verbose = F, npcs = 20)
-# pbmc = RunUMAP(pbmc, dims = 1:10, verbose = F)
-# 
-# DimPlot(pbmc, reduction = "umap")
-# 
-# # running doubletFinder
-# nExp <- round(ncol(data.filt) * 0.04) 
-# data.filt <- doubletFinder_v3(data.filt, pN = 0.25, pK = 0.09, nExp = nExp, PCs = 1:10)
 
 

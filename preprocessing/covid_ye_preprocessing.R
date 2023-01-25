@@ -2,6 +2,8 @@
 library(scITD)
 library(Seurat)
 
+# the data were downloaded from here:
+# https://cellxgene.cziscience.com/collections/7d7cabfd-1d1f-40af-96b7-26a0825a306d
 pbmc <- readRDS('/home/jmitchel/data/covid_data_ye/local.rds')
 
 # it seems in their paper they say the Case patients negative for COVID19 often had

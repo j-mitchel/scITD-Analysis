@@ -2,6 +2,7 @@ library(scITD)
 library(Seurat)
 
 # load up the subsetted dataset
+# generated from the lupus_preprocessing.R script
 pbmc <- readRDS('/home/jmitchel/data/lupus_data/lupus_subsetted_seurat_v2.rds')
 
 # set up project parameters

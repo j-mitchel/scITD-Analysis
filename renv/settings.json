@@ -1,0 +1,19 @@
+{
+  "bioconductor.version": "3.16",
+  "external.libraries": [
+    "ssvd"
+  ],
+  "ignored.packages": [],
+  "package.dependency.fields": [
+    "Imports",
+    "Depends",
+    "LinkingTo"
+  ],
+  "r.version": [],
+  "snapshot.type": "all",
+  "use.cache": true,
+  "vcs.ignore.cellar": true,
+  "vcs.ignore.library": true,
+  "vcs.ignore.local": true,
+  "vcs.manage.ignores": true
+}

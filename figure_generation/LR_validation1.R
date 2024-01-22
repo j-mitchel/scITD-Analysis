@@ -361,7 +361,7 @@ chan_bplot <- ggplot(tmp,aes(x=channel,y=adj_pval)) +
         axis.ticks.x = element_blank(),
         plot.title = element_text(hjust = 0.5))
 
-### Figure S4B
+### Figure S7c
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/LR_chan_bplot3_2.pdf", useDingbats = FALSE,
 #     width = 6, height = 4.5)
 chan_bplot
@@ -496,7 +496,7 @@ comp_bplot_frac <- ggplot(res_dat,aes(x=db,y=percent_enr,fill=method)) +
 
 combined_plt <- cowplot::plot_grid(comp_bplot_size,comp_bplot_frac,nrow=1, rel_widths = c(.7,1.1))
 
-### Figure S4C
+### Figure S7d
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/LR_all_db_bplot3.pdf", useDingbats = FALSE,
 #     width = 7.5, height = 3.5)
 combined_plt

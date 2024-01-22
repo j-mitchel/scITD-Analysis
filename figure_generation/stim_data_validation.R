@@ -27,7 +27,7 @@ myembed1 <- ggplot(embed,aes(x=tsne1,y=tsne2,color=dnr_stim)) +
   labs(color = "Sample") +
   theme_bw()
 
-### Figure 1B right top
+### Figure 1b top
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/cd4_cM_dnr_embed.pdf", useDingbats = FALSE,
 #     width = 6, height = 4)
 myembed1
@@ -38,7 +38,7 @@ myembed2 <- ggplot(embed,aes(x=tsne1,y=tsne2,color=stim)) +
   labs(color = "Group") +
   theme_bw()
 
-### Figure 1B right bottom
+### Figure 1b bottom
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/cd4_cM_stim_embed.pdf", useDingbats = FALSE,
 #     width = 6, height = 4)
 myembed2
@@ -223,7 +223,7 @@ myhmap <- Heatmap(pb_total,
                   col = col_fun,
                   right_annotation = myannot)
 
-### Figure S1B
+### Figure S1a
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/demuxlet_de_hmap.pdf", useDingbats = FALSE,
 #     width = 4.75, height = 5.5)
 myhmap
@@ -293,7 +293,7 @@ p <- ggplot(tmp,aes(x=stim,y=dsc)) +
   theme_bw()
 p
 
-### Figure 1C
+### Figure 1c
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/demuxlet_scores_stim.pdf", useDingbats = FALSE,
 #     width = 3, height = 4)
 p
@@ -340,7 +340,7 @@ pbmc_container <- plot_loadings_annot(pbmc_container, factor_select=1,
                                       show_var_explained = FALSE,
                                       clust_method = 'ward.D')
 
-### Figure 1D
+### Figure 1d
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/demuxlet_loadings_v3.pdf", useDingbats = FALSE,
 #     width = 5.25, height = 6)
 draw(pbmc_container[["plots"]][["all_lds_plots"]][["1"]],
@@ -407,7 +407,7 @@ tmp <- as.data.frame(cbind(lds_both,fc_both,sig_both))
 colnames(tmp) <- c('loading','log2FC','sig_val')
 tmp$sig_val <- tmp$sig_val<.01
 
-### Figure S1C
+### Figure S1c
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/demuxlet_loading_vs_log2FC_v3.pdf", useDingbats = FALSE,
 #     width = 4, height = 1.5)
 ggplot(tmp,aes(x=log2FC,y=loading,color=sig_val)) +
@@ -457,7 +457,7 @@ rownames(tmp) <- gene_ct
 tmp$scITD_padj[tmp$scITD_padj<.0001] <- .0001
 tmp$DE_padj[tmp$DE_padj<.000000000000001] <- .000000000000001
 
-### Figure 1E
+### Figure S1b
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/demuxlet_lm_vs_DEpval_v2.pdf", useDingbats = FALSE,
 #     width = 4.5, height = 3)
 ggplot(tmp,aes(x=-log(DE_padj,base=10),y=-log(scITD_padj,base=10))) +
@@ -614,7 +614,7 @@ colnames(tmp2) <- c('spearman_cor','cells_donor_ctype')
 tmp <- tmp[tmp$cells_donor_ctype!=12,]
 tmp2 <- tmp2[tmp2$cells_donor_ctype!=12,]
 
-### Figure S1D
+### Figure S1d
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/demux_loading_cor_subsamp3.pdf", useDingbats = FALSE,
 #     width = 4, height = 2.25)
 ggplot(tmp,aes(x=cells_donor_ctype,y=spearman_cor)) +

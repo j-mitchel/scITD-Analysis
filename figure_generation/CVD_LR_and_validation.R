@@ -277,7 +277,7 @@ p <- ggplot(tmp,aes(x=severity,y=dscore,fill=status)) +
   theme(axis.text=element_text(size=24),
         axis.title=element_text(size=26))
 
-### Figure 7C
+### Figure S8d
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/covid_f2_proj.pdf", useDingbats = FALSE,
 #     width = 12.5, height = 8.5)
 p
@@ -333,7 +333,7 @@ lig_mod_fact <- plot_mod_and_lig(pbmc_container,factor_select=2,
                                  mod_ct='cMono',mod=14,lig_ct='Th',lig='IL16')
 lig_mod_fact
 
-### Figure 7E
+### Figure 5d
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/covid_IL16_trio3.pdf", useDingbats = FALSE,
 #     width = 5, height = 5.5)
 lig_mod_fact 
@@ -346,7 +346,7 @@ mod_enr <- plot_multi_module_enr(pbmc_container, ctypes, modules, sig_thresh=.00
                                  db_use=c('GO'),
                                  max_plt_pval=.009,h_w=c(12,6))
 
-### Figure 7F
+### Figure S8b
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/covid_IL16_enr.pdf", useDingbats = FALSE,
 #     width = 6, height = 7)
 mod_enr
@@ -381,7 +381,7 @@ pbmc_ye$tucker_results[[1]][,5] <- pbmc_ye$tucker_results[[1]][,5]*-1
 lig_mod_fact <- plot_mod_and_lig(pbmc_ye,factor_select=5,
                                  mod_ct='cMono',mod=4,lig_ct='Th',lig='IL16')
 
-### Figure S6C
+### Figure S8e
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/covid_jimmie_IL16_trio.pdf", useDingbats = FALSE,
 #     width = 5, height = 5.5)
 lig_mod_fact
@@ -393,7 +393,7 @@ mod_enr <- plot_multi_module_enr(pbmc_ye, ctypes, modules, sig_thresh=.005,
                                  db_use=c('GO'),
                                  max_plt_pval=.005,h_w=c(12,6))
 
-### Figure S6D
+### Figure S8f
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/covid_jimmie_IL16_GO.pdf", useDingbats = FALSE,
 #     width = 6, height = 7)
 mod_enr

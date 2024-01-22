@@ -240,13 +240,13 @@ new_names <- sapply(as.character(pbmc_tmp@meta.data$full_clustering), function(x
 names(new_names) <- NULL
 pbmc_tmp@meta.data$initial_clustering <- factor(new_names,levels=unique(new_names))
 
-### Figure 6A left
+### Figure 5a
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/covid_umap_major_clustering3.pdf", useDingbats = FALSE,
 #     width = 15, height = 13)
 DimPlot(pbmc_tmp, reduction = "umap", group.by = 'initial_clustering', label = TRUE) + ggtitle('Cell types analyzed') + NoLegend()
 # dev.off()
 
-### Figure 6A right
+###
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/covid_umap_subclusters3.pdf", useDingbats = FALSE,
 #     width = 15, height = 13)
 DimPlot(pbmc_tmp, reduction = "umap", group.by = 'full_clustering', label = TRUE) + ggtitle('Cell subtypes') + NoLegend()
@@ -290,7 +290,7 @@ cor_hmap <- Heatmap(res_orig, name = "Pearson r",
                       grid::grid.text(sprintf("%.2f", res_orig[i, j]), x, y, gp = gpar(fontsize = 10))
                     })
 
-### Figure 6B
+### Figure S9a
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/sle_covid_projection4.pdf", useDingbats = FALSE,
 #     width = 8, height = 6.5)
 cor_hmap
@@ -344,7 +344,7 @@ p <- ggplot(tmp,aes(x=is_critical,y=dscore,fill=status)) +
   theme(axis.text=element_text(size=24),
         axis.title=element_text(size=26))
 
-### Figure 6E
+### Figure S9b
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/covid_f1_status2.pdf", useDingbats = FALSE,
 #     width = 12.5, height = 8.5)
 p
@@ -437,7 +437,7 @@ p <- ggplot(tmp,aes(x=status_on_day_collection_summary,y=dscore,fill=status)) +
   theme(axis.text=element_text(size=24),
         axis.title=element_text(size=26))
 
-### Figure 7A
+### Figure 5b
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/covid_f2_severity2.pdf", useDingbats = FALSE,
 #     width = 12.5, height = 8.5)
 p
@@ -500,7 +500,7 @@ b_spec_gns <- names(get_ct_specific_genes(pbmc_container_covid,c('B'),1,thresh =
 g_show <- c('IFI6','ISG15','MX1','USP18',
             'JUP','LILRB2','FOXP3','CD70')
 
-### Figure 6D
+### Figure S9c
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/covid_f1_lds.pdf", useDingbats = FALSE,
 #     width = 5, height = 5)
 pbmc_container_covid <- plot_loadings_annot(pbmc_container_covid, factor_select=1, use_sig_only=TRUE, nonsig_to_zero=TRUE, annot='none',
@@ -553,7 +553,7 @@ t_all_spec_gns[t_all_spec_gns%in%rownames(prolif.de.markers3)]
 
 g_show <- c('RAD51','UBE2C','CENPF','CDK1','HLA-DRB1','HLA-DPB1','HLA-DRA')
 
-### Figure 7B
+### Figure 5c
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/covid_f2_lds.pdf", useDingbats = FALSE,
 #     width = 5, height = 5)
 pbmc_container_covid <- plot_loadings_annot(pbmc_container_covid, factor_select=2, use_sig_only=TRUE, nonsig_to_zero=TRUE, annot='none',
@@ -581,7 +581,7 @@ pbmc_container_covid <- get_ctype_subc_prop_associations(pbmc_container_covid,ct
 pbmc_container_covid$plots$ctype_prop_factor_associations
 dotplot <- get_subclust_enr_dotplot(pbmc_container_covid,ctype='Th',res=.5,subtype=1,factor_use=2)
 
-### Figure S6A left
+### Figure S8a left
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/covid_Th_prop.pdf", useDingbats = FALSE,
 #     width = 3.5, height = 4)
 dotplot + ylim(0,.5)
@@ -599,7 +599,7 @@ pbmc_container_covid <- get_ctype_subc_prop_associations(pbmc_container_covid,ct
 pbmc_container_covid$plots$ctype_prop_factor_associations
 dotplot <- get_subclust_enr_dotplot(pbmc_container_covid,ctype='Tc',res=.5,subtype=1,factor_use=2)
 
-### Figure S6A right
+### Figure S8a right
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/covid_Tc_prop.pdf", useDingbats = FALSE,
 #     width = 3.5, height = 4)
 dotplot
@@ -609,7 +609,7 @@ dotplot
 dotplot <- get_subclust_enr_dotplot(pbmc_container_covid,ctype='Th',res=.5,subtype=6,factor_use=2)
 dotplot <- dotplot + scale_y_continuous(c(0,.10))
 
-### Figure 7D top right
+### Figure 5e top right
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/covid_Th_prolif.pdf", useDingbats = FALSE,
 #     width = 3.5, height = 2.5)
 dotplot # 3.73781501836407e-10
@@ -618,7 +618,7 @@ dotplot # 3.73781501836407e-10
 dotplot <- get_subclust_enr_dotplot(pbmc_container_covid,ctype='Tc',res=.5,subtype=4,factor_use=2)
 dotplot <- dotplot + scale_y_continuous(c(0,.15))
 
-### Figure 7D bottom
+### Figure 5e bottom
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/covid_Tc_prolif.pdf", useDingbats = FALSE,
 #     width = 3.5, height = 2.5)
 dotplot # 1.48574233120848e-13
@@ -637,7 +637,7 @@ pbmc_container_covid$subclusters[[my_ctype]][['res:0.5']] <- subc
 dotplot <- get_subclust_enr_dotplot(pbmc_container_covid,ctype='NK',res=.5,subtype=2,factor_use=2)
 dotplot <- dotplot + scale_y_continuous(c(0,.3))
 
-### Figure 7D top left
+### Figure 5e top left
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/covid_NK_prolif.pdf", useDingbats = FALSE,
 #     width = 3.5, height = 2.5)
 dotplot # 1.44605467115252e-16
@@ -810,7 +810,7 @@ cao <- cacoa::Cacoa$new(
 # this analysis needs to be done per factor
 p1 <- get_diff_gsea(betas_covid,betas_sle,cao,f_use1=1,f_use2=1,plot_n=10)
 
-### Figure 6F
+### Figure S9e
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/gsea_compare_covid_sle3.pdf", useDingbats = FALSE,
 #     width = 6, height = 5)
 p1
@@ -856,7 +856,7 @@ plt_sle <- plt_sle + theme_bw()
 
 fig <- cowplot::plot_grid(plt_sle,plt_covid,nrow=2)
 
-### Figure 6G
+### Figure S9f
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/ATP_process_fgsea.pdf", useDingbats = FALSE,
 #     width = 5, height = 8.5)
 fig
@@ -972,7 +972,6 @@ myhmap <- Heatmap(as.matrix(cor_res), name = 'Pearson cor',
                     grid::grid.text(sprintf("%.2f", as.matrix(cor_res)[i, j]), x, y, gp = gpar(fontsize = 10))
                   })
 
-### Figure 6C
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs/factor_assoc_cors_sle_cvd_v2.pdf", useDingbats = FALSE,
 #     width = 6, height = 5)
 myhmap
@@ -1066,7 +1065,7 @@ f2 <- plot_grid(p1,p2,ncol=1)
 f3 <- plot_grid(f1,f2,ncol=2,rel_widths = c(.5,.25))
 f3
 
-### Figure S5A
+### Figure S10a
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/covid_sle_sex_age_unbalanced.pdf", useDingbats = FALSE,
 #     width = 9, height = 6.5)
 f3
@@ -1243,7 +1242,7 @@ f2 <- plot_grid(p1,p2,ncol=1)
 f4 <- plot_grid(f1,f2,ncol=2,rel_widths = c(.5,.25))
 f4
 
-### Figure S5B
+### Figure S10b
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/covid_sle_sex_age_balanced.pdf", useDingbats = FALSE,
 #     width = 9, height = 6.5)
 f4
@@ -1565,7 +1564,7 @@ p <- ggplot(df2_total,aes(x=full,y=sub,color=type)) +
   theme_bw(base_size = 17) +
   guides(color=guide_legend(title="Gene category"))
 
-### Figure S5D
+### Figure S10d
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/full_vs_balanced_delta_betas.pdf", useDingbats = FALSE,
 #     width = 8, height = 5)
 p

@@ -97,7 +97,7 @@ pbmc_container <- get_gene_modules(pbmc_container,sft_thresh)
 lr_hmap <- compute_LR_interact(pbmc_container, lr_pairs, sig_thresh=.00000000005,
                                percentile_exp_rec=0.85, add_ld_fact_sig=TRUE)
 
-### Figure S3B
+### Figure S7a
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_new_lr8.pdf", useDingbats = FALSE,
 #     width = 6, height = 7)
 lr_hmap
@@ -106,7 +106,7 @@ lr_hmap
 
 lig_mod_fact <- plot_mod_and_lig(pbmc_container,factor_select=2,mod_ct='Th',mod=5,lig_ct='cMono',lig='ICOSLG')
 
-### Figure 3E
+### Figure 4a
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_ICOSLG_trio2.pdf", useDingbats = FALSE,
 #     width = 6, height = 5)
 lig_mod_fact
@@ -122,7 +122,7 @@ modules <- c(5)
 mod_enr <- plot_multi_module_enr(pbmc_container, ctypes, modules, sig_thresh=.005, 
                                  db_use=c('GO','BioCarta'),max_plt_pval=.005,h_w=c(14,2))
 
-### Figure 3F
+### Figure S4d
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_ICOSLG_gsets2.pdf", useDingbats = FALSE,
 #     width = 5, height = 8)
 mod_enr
@@ -153,7 +153,7 @@ p <- ggplot(tmp,aes(x=as.factor(in_mod),y=target_scores)) +
 test_res <- wilcox.test(target_scores~in_mod,data=tmp)
 print(test_res$p.value)
 
-### Figure S3C
+### Figure S4e
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/ICOSLG_NicheNet_enr2.pdf", useDingbats = FALSE,
 #     width = 4, height = 3.5)
 p
@@ -164,7 +164,7 @@ p
 ## showing THBS1 LR interaction relevant for factor 3
 lig_mod_fact <- plot_mod_and_lig(pbmc_container,factor_select=3,mod_ct='Th',mod=9,lig_ct='cDC',lig='THBS1')
 
-### Figure 4E
+### Figure S5c
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_THBS1_trio.pdf", useDingbats = FALSE,
 #     width = 6, height = 5)
 lig_mod_fact

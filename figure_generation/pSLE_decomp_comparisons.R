@@ -51,7 +51,7 @@ p2 <- DimPlot(pbmc, reduction = "umap", group.by = 'clusters_coarse', label = TR
 
 fig <- plot_grid(p2,p1)
 
-### Figure S2G
+### Figure S2e
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs/pediatric_umap.pdf", useDingbats = FALSE,
 #     width = 8, height = 4)
 fig
@@ -380,7 +380,7 @@ p3 <- ggplot(tmp2,aes(x=dsc,y=cvar)) +
   theme(axis.text=element_text(size=10),
         axis.title=element_text(size=14))
 
-### Figure 3C
+### Figure S4b
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs/proj_F2_CREATININE.pdf", useDingbats = FALSE,
 #     width = 4, height = 3.25)
 p3
@@ -410,7 +410,7 @@ p4 <- ggplot(tmp2,aes(x=cvar,y=dsc)) +
   coord_flip() +
   theme_bw()
 
-### Figure S3A
+### Figure S4c
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs/proj_F2_Neph_all.pdf", useDingbats = FALSE,
 #     width = 4, height = 3.25)
 p4
@@ -440,7 +440,7 @@ p5 <- ggplot(tmp2,aes(x=cvar,y=dsc)) +
   coord_flip() +
   theme_bw()
 
-### Figure 4C
+### Figure S5b
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs/proj_F3_OS.pdf", useDingbats = FALSE,
 #     width = 4, height = 3.25)
 p5
@@ -702,7 +702,7 @@ fig <- ggplot(res_plot2, aes(x=var_lab, y=beta, fill=study)) +
   geom_hline(yintercept=0) +
   theme_classic()
 
-### Figure 2F
+### Figure S3c
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/F1_meta_barplot2.pdf", useDingbats = FALSE,
 #     width = 7.5, height = 4)
 fig
@@ -760,7 +760,7 @@ cor_hmap <- Heatmap(cor_mat, name = "Pearson r",
                       grid::grid.text(sprintf("%.2f", cor_mat[i, j]), x, y, gp = gpar(fontsize = 10))
                     })
 
-### Figure S2H
+### Figure S2f
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs/pediatric_comp_proj_decomp.pdf", useDingbats = FALSE,
 #     width = 4.5, height = 5.5)
 cor_hmap
@@ -899,10 +899,12 @@ get_diff_gsea <- function(betas_ped,betas_adult,cao,f_use1,f_use2,plot=TRUE,plot
     colnames(res) <- c('padj','Z','Gene')
     res$Gene <- names(diff_vals)
     
-    # res$Z <- diff_vals
-    # res$Z <- abs(diff_vals) # TESTING ONLY
-    res$Z <- abs(diff_vals**2) # TESTING ONLY
-    # res$Z <- abs(diff_vals**2.5) # TESTING ONLY
+    res$Z <- diff_vals
+    
+    # # res$Z <- diff_vals
+    # # res$Z <- abs(diff_vals) # TESTING ONLY
+    # res$Z <- abs(diff_vals**2) # TESTING ONLY
+    # # res$Z <- abs(diff_vals**2.5) # TESTING ONLY
     
     res$padj <- rep(1,length(diff_vals))
     # sort by absolute value score
@@ -915,11 +917,11 @@ get_diff_gsea <- function(betas_ped,betas_adult,cao,f_use1,f_use2,plot=TRUE,plot
 
   cao[["test.results"]][["de"]] <- all_res
 
-  # cao$estimateOntology(type="GSEA", org.db=org.Hs.eg.db::org.Hs.eg.db, verbose=TRUE,
-  #                      n.cores=5, ignore.cache=TRUE)
   cao$estimateOntology(type="GSEA", org.db=org.Hs.eg.db::org.Hs.eg.db, verbose=TRUE,
-                       n.cores=5, ignore.cache=TRUE,
-                       scoreType = "pos")
+                       n.cores=5, ignore.cache=TRUE)
+  # cao$estimateOntology(type="GSEA", org.db=org.Hs.eg.db::org.Hs.eg.db, verbose=TRUE,
+  #                      n.cores=5, ignore.cache=TRUE,
+  #                      scoreType = "pos")
   
   # cao$estimateOntology(type="GO", org.db=org.Hs.eg.db::org.Hs.eg.db, verbose=TRUE,
   #                      n.cores=5, ignore.cache=TRUE)
@@ -957,19 +959,16 @@ p1 <- get_diff_gsea(betas_ped,betas_adult,cao,f_use1=1,f_use2=1,plot_n=15)
 p2 <- get_diff_gsea(betas_ped,betas_adult,cao,f_use=2,f_use2=2,plot_n=5)
 p3 <- get_diff_gsea(betas_ped,betas_adult,cao,f_use=3,f_use2=3,plot_n=5)
 
-### Figure 5C
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/covid_sle_f1_compare_gsea.pdf", useDingbats = FALSE,
 #     width = 6, height = 4)
 p1
 # dev.off()
 
-### Figure 5E top
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/covid_sle_f2_compare_gsea.pdf", useDingbats = FALSE,
 #     width = 6, height = 4)
 p2
 # dev.off()
 
-### Figure 5E bottom
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/covid_sle_f3_compare_gsea.pdf", useDingbats = FALSE,
 #     width = 6, height = 4)
 p3
@@ -1036,7 +1035,6 @@ p1 <- ggplot(res2,aes(x=gene,y=beta,fill=dataset)) +
   coord_flip() +
   theme_minimal()
 
-### Figure 5D
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/covid_sle_f1_select_genes2.pdf", useDingbats = FALSE,
 #     width = 6, height = 5)
 p1
@@ -1192,7 +1190,6 @@ p <- ggplot(prep_dat4,aes(x=as.factor(type),y=av,fill=ctype)) +
   geom_errorbar(aes(ymin=av-stdev, ymax=av+stdev), width=.2,position=position_dodge(.9)) +
   theme_bw()
 
-### Figure 5F
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs/gsea_compare_beta_bplot.pdf", useDingbats = FALSE,
 #     width = 8, height = 4)
 p
@@ -1289,7 +1286,6 @@ myhmap <- Heatmap(as.matrix(cor_res), name = 'Pearson cor',
                     grid::grid.text(sprintf("%.2f", as.matrix(cor_res)[i, j]), x, y, gp = gpar(fontsize = 10))
                   })
 
-### Figure 5A
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs/factor_assoc_cors_v2.pdf", useDingbats = FALSE,
 #     width = 6, height = 4)
 myhmap
@@ -1420,7 +1416,7 @@ p1
 
 fig <- plot_grid(p3,p1)
 
-### Figure S3D
+### Figure S4f
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs/ICOSLG_ped_rep.pdf", useDingbats = FALSE,
 #     width = 5.75, height = 2.5)
 fig
@@ -1506,7 +1502,7 @@ p1
 
 fig <- plot_grid(p3,p1)
 
-### Figure 4F
+### Figure S5d
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs/THBS1_ped_rep.pdf", useDingbats = FALSE,
 #     width = 5.75, height = 2.5)
 fig

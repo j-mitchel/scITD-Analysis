@@ -6,10 +6,11 @@ library(coda.base)
 library(RColorBrewer)
 library(readxl)
 library(MASS)
+library(ggrastr)
 
-##### plotting umap embedding of all cells from SLE dataset
 # conos object from preprocessing/embedding_prep.R file
 con <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_conos2.rds')
+con[["embeddings"]][["UMAP"]] <- con[["embeddings"]][["UMAP"]][cells_keep,]
 tmp <- con$plotGraph(alpha=0.1)
 mycolors <- brewer.pal(n = 9, name = "Set1")
 mycolors <- mycolors[c(1:5,7,9)]
@@ -22,7 +23,7 @@ tmp <- tmp + theme(panel.grid.major = element_blank(),
 # scale_color_brewer(palette="Set1")
 tmp$layers[[2]] <- NULL
 
-### Figure 2B left
+### Figure 2a
 # pdf(file = "/home/jmitchel/figures/for_paper/lupus_embedding.pdf", useDingbats = FALSE,
 #     width = 7, height = 7)
 # saved a jpeg 550 x 400 dimensions
@@ -47,7 +48,7 @@ tmp <- tmp + theme(panel.grid.major = element_blank(),
 # scale_color_brewer(palette="Set1")
 tmp$layers[[2]] <- NULL
 
-### Figure 2B right
+### Figure S2a
 # saved a jpeg 550 x 400 dimensions
 tmp
 # dev.off()
@@ -131,7 +132,7 @@ pbmc_container <- determine_ranks_tucker(pbmc_container, max_ranks_test=c(14,20)
                                          scale_var=TRUE,
                                          var_scale_power=.5)
 
-### Figure S2A
+### Figure S2b
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/sle_only_rank_determination2.pdf", useDingbats = FALSE,
 #     width = 9, height = 7)
 pbmc_container$plots$rank_determination_plot
@@ -149,7 +150,7 @@ p <- p +
   theme_bw()
 p
 
-### Figure S2B
+### Figure S2c
 # pdf("/home/jmitchel/figures/scITD_revision_figs2/sle_only_min_sig_genes.pdf", width = 4, height = 4)
 p
 # dev.off()
@@ -159,13 +160,13 @@ p
 set.seed(1234)
 pbmc_container <- run_stability_analysis(pbmc_container,ranks=c(7,20),n_iterations=500,subset_type='subset', sub_prop=.85)
 
-### Figure S2C left
+### Figure S2d left
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/stability_dsc2.pdf", useDingbats = FALSE,
 #     width = 4, height = 3.5)
 pbmc_container$plots$stability_plot_dsc
 # dev.off()
 
-### Figure S2C right
+### Figure S2d right
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/stability_lds2.pdf", useDingbats = FALSE,
 #     width = 4, height = 3.5)
 pbmc_container$plots$stability_plot_lds
@@ -380,7 +381,7 @@ dscores <- tmp$dscore[(floor(window_size/2)+1):(nrow(tmp)-floor(window_size/2))]
 plot_df <- cbind.data.frame(stored_counts,dscores)
 plot_df$stored_counts <- (plot_df$stored_counts / window_size) * 100
 
-### Figure 3A
+### Figure S4a
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/LN_antidsDNA_link2.pdf", useDingbats = FALSE,
 #     width = 4, height = 3.25)
 ggplot(plot_df,aes(x=dscores,y=stored_counts)) +
@@ -583,7 +584,7 @@ tmp$cvar_word <- sapply(tmp$cvar,function(x){
 })
 tmp$cvar_word <- as.factor(tmp$cvar_word)
 
-### Figure 4A
+### Figure 2c
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_prednisone_binary2.pdf", useDingbats = FALSE,
 #     width = 4.5, height = 3.5)
 ggplot(tmp,aes(x=cvar_word,y=dscore)) +
@@ -610,7 +611,7 @@ line_dat <- c(line_range*lmres$coefficients[[2]] + lmres$coefficients[[1]])
 line_df <- cbind.data.frame(line_range,line_dat)
 colnames(line_df) <- c('myx','myy')
 
-# Figure 4D
+# Figure S5a
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/sle_prednisone_dose2.pdf", useDingbats = FALSE,
 #     width = 6, height = 4)
 ggplot(tmp,aes(x=dscore,y=cvar)) +
@@ -652,7 +653,7 @@ pbmc_container <- plot_donor_matrix(pbmc_container,
                                     add_meta_associations='pval',
                                     meta_vars=c('sex'))
 
-### Figure 2C
+### Figure 2b
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/sle_only_dscores.pdf", useDingbats = FALSE,
 #     width = 4, height = 4)
 pbmc_container$plots$donor_matrix
@@ -690,7 +691,7 @@ pbmc_container <- run_gsea_one_factor(pbmc_container, factor_select=1, method="f
 #   sim_hmap_res <- ht_clusters(mat, cl, word_cloud_grob_param = list(max_width = 70),
 #   exclude_words=exclude_words, fontsize_range = c(10, 15))
 
-### Figure S2D
+### Figure S3b
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/F1_gsea_summary.pdf", useDingbats = FALSE,
 #     width = 17, height = 10)
 plot_gsea_hmap_w_similarity(pbmc_container,factor_select=1,direc='up',thresh=.05,
@@ -756,7 +757,7 @@ hm_list <- plot_select_sets(pbmc_container, 1, gsets, color_sets=gset_cmap,
 hm_list
 
 
-### Figure 2D
+### Figure 2d
 ## plotting just specific genes h_w=c(9,6.5) original
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/sle_only_f1_lds_v2.pdf", useDingbats = FALSE,
 #     width = 10, height = 18)
@@ -849,7 +850,7 @@ p <- ggplot(tmp,aes(x=status,y=proj_sc)) +
   coord_flip() +
   theme_bw()
 
-### Figure 1E
+### Figure S3a
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/proj_f1_status.pdf", useDingbats = FALSE,
 #     width = 4, height = 3)
 p
@@ -923,7 +924,7 @@ tmp2 <- as.data.frame(scale(tmp))
 lmres <- summary(lm(Th~dsc,data=tmp2))
 print(lmres)
 
-### Figure S2E
+### Figure S3d
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/F1_Th_props.pdf", useDingbats = FALSE,
 #     width = 4, height = 3)
 p
@@ -946,7 +947,7 @@ dotplot <- get_subclust_enr_dotplot(pbmc_container,ctype='Th',res=.5,subtype=1,f
 dotplot <- dotplot + ylim(0,.3) + ylab('Proportion Treg/Th') + 
   theme(plot.title = element_blank())
 
-### Figure S2F
+### Figure S3e
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/F1_T4reg_props.pdf", useDingbats = FALSE,
 #     width = 4, height = 3)
 dotplot
@@ -1199,7 +1200,7 @@ plot_gsea_hmap_w_similarity(pbmc_container,factor_select=2,direc='up',thresh=.05
 plot_gsea_sub(pbmc_container,thresh=.05,clust_select=8)
 
 
-### Figure 3B
+### Figure 2f
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/F2_lds.pdf", useDingbats = FALSE,
 #     width = 5, height = 5)
 pbmc_container <- plot_loadings_annot(pbmc_container, factor_select=2, use_sig_only=TRUE, nonsig_to_zero=TRUE, annot='none',
@@ -1236,7 +1237,7 @@ all_res=c(.8)
 pbmc_container <- get_subclust_umap(pbmc_container,all_ctypes=all_ctypes,
                                     all_res=all_res,n_col=1)
 
-### Figure S3E
+### Figure S4h
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/B_subc_umap.pdf", useDingbats = FALSE,
 #     width = 4, height = 3)
 pbmc_container[["plots"]][["subc_umaps"]][["B:0.8"]] +   
@@ -1257,7 +1258,7 @@ dotplot <- get_subclust_enr_dotplot(pbmc_container,ctype='B',res=.8,subtype=4,fa
 dotplot <- dotplot + ylim(0,.75) + ylab('Proportion Bact/B') + 
   theme(plot.title = element_blank())
 
-### Figure 3G
+### Figure S4g
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/F2_bact_props.pdf", useDingbats = FALSE,
 #     width = 4, height = 3)
 dotplot
@@ -1290,7 +1291,7 @@ spec_callouts_ct <- c('ICA1','IL2RA','CD28','TCL1A','TLR7','IL1B')
 
 spec_callouts <- c(spec_callouts_cort,spec_callouts_ct)
 
-### Figure 4B
+### Figure 2h
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/F3_lds.pdf", useDingbats = FALSE,
 #     width = 5, height = 5)
 pbmc_container <- plot_loadings_annot(pbmc_container, factor_select=3, use_sig_only=TRUE, nonsig_to_zero=TRUE, annot='none',
@@ -1322,7 +1323,7 @@ dotplot <- get_subclust_enr_dotplot(pbmc_container,ctype='Th',res=.5,subtype=1,f
 dotplot <- dotplot + ylim(0,.5) + ylab('Proportion Treg/Th') + 
   theme(plot.title = element_blank())
 
-### Figure 4G
+### Figure S5e
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/F3_Treg_props.pdf", useDingbats = FALSE,
 #     width = 3.5, height = 3)
 dotplot

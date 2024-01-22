@@ -705,7 +705,7 @@ p <- ggplot(tmp, aes(x = factor(method), y = count, fill = type)) +
   theme_bw()
 p
 
-### Figure S4G
+### Figure S7e
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/scitd_vs_nnet_validation_v2.pdf", useDingbats = FALSE,
 #     width = 5, height = 3.5) # using betase, .05 thresh, and weighted gsea
 p
@@ -794,13 +794,11 @@ get_circos_plot <- function(res_lst,high_low) {
 p1 <- get_circos_plot(res_lst,high_low='high')
 p2 <- get_circos_plot(res_lst,high_low='low')
 
-### Figure S4D right
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs/F2_LR_high_circ.pdf", useDingbats = FALSE,
 #     width = 8, height = 4)
 p1
 # dev.off()
 
-### Figure S4D left
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs/F2_LR_low_circ.pdf", useDingbats = FALSE,
 #     width = 8, height = 4)
 p2
@@ -931,7 +929,6 @@ p <- ggplot(res_transform,aes(x=padj_thresh,y=jaccard_coef,fill=rand)) +
   theme_bw()
 p
 
-### Figure S4E
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs/LR_jaccard.pdf", useDingbats = FALSE,
 #     width = 4, height = 3)
 p

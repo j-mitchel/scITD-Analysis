@@ -1,8 +1,9 @@
 library(Seurat)
-library(scITD)
 library(ggplot2)
 library(coda.base)
-
+library(dplyr)
+library(devtools)
+load_all('/home/jmitchel/scITD/')
 
 ### showing results stability for downsampling donors to x% of original
 
@@ -75,10 +76,11 @@ pbmc_container$projection_data[[1]][1,] <- pbmc_container$projection_data[[1]][1
 
 
 set.seed(0)
-downsample_proportions <- c(.1,.2,.4,.5,.6,.7,.8,.9)
+downsample_proportions <- c(.1,.2,.3,.4,.5,.6,.7,.8,.9)
+num_donors <- length(pbmc_container$tensor_data[[1]])
 mean_stability_dsc <- c()
 mean_stability_lds <- c()
-downsample_proportions_iter() <- 
+downsample_proportions_iter <- c() 
 for (dprop in downsample_proportions) {
   pbmc_container <- run_stability_analysis(pbmc_container,ranks=c(7,20),
                                            n_iterations=50,
@@ -93,12 +95,13 @@ for (dprop in downsample_proportions) {
   # compute average max correlations over factors
   stability_res_means <- stability_res %>%
     group_by(iteration) %>% 
-    summarise((av_dsc=mean(dscores)), av_lds=mean(ldngs))
+    summarise(av_dsc=mean(dscores), av_lds=mean(ldngs))
   
   # store means
   mean_stability_dsc <- c(mean_stability_dsc,stability_res_means$av_dsc)
   mean_stability_lds <- c(mean_stability_lds,stability_res_means$av_lds)
-  downsample_proportions_iter <- c(downsample_proportions_iter,rep(dprop,rep(length(mean_stability_lds))))
+  num_donors_down <- round(num_donors * dprop)
+  downsample_proportions_iter <- c(downsample_proportions_iter,rep(num_donors_down,rep(length(stability_res_means$av_lds))))
 }
 
 # plot results
@@ -114,10 +117,24 @@ all_sds <- c(tmp2$sd_dsc,tmp2$sd_lds)
 all_means <- as.data.frame(all_means)
 all_sds <- as.data.frame(all_sds)
 all_means$var_type <- c(rep('dsc',length(tmp2$av_dsc)),rep('lds',length(tmp2$av_lds)))
-tmp2 <- rbind.data.frame(all_means,all_sds)
-colnames(tmp2) <- c('mean_cor','sd_cor','var_type','prop')
-ggplot(tmp2,aes(x=prop,y=mean_cor,group=var_type)) +
+all_means$prop <- c(tmp2$prop,tmp2$prop)
+tmp2 <- cbind.data.frame(all_means,all_sds)
+colnames(tmp2) <- c('mean_cor','var_type','prop','sd_cor')
+p <- ggplot(tmp2,aes(x=prop,y=mean_cor,color=var_type)) +
   geom_point() +
-  geom_errorbar(aes(ymin=mean_cor-sd_cor, ymax=mean_cor+sd_cor), width=.2,
-                position=position_dodge(.9)) 
+  geom_errorbar(aes(ymin=mean_cor-sd_cor, ymax=mean_cor+sd_cor), width=.2) +
+  geom_line() +
+  xlab('# of donors') +
+  ylab('Correlation to original factors') +
+  theme_bw()
+
+# pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/downsample_analysis.pdf", useDingbats = FALSE,
+#     width = 5, height = 3.5)
+p
+dev.off()
+
+
+
+
+
 

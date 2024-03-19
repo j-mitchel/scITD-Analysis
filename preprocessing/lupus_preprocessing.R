@@ -186,7 +186,59 @@ pbmc@meta.data$ct_cov <- subc_orig
 ## save the final object used in downstream analyses
 # saveRDS(pbmc,file='/home/jmitchel/data/temp_test_data/lupus_subsetted_seurat_v3.rds',compress = "xz")
 
+## saving a version for scanpy
+library(Seurat)
+library(SeuratData)
+library(SeuratDisk)
 
+pbmc <- readRDS(file='/home/jmitchel/data/temp_test_data/lupus_subsetted_seurat_v3.rds')
+# converting shorthand cell type names to full names
+new_names <- sapply(as.character(pbmc@meta.data$cg_cov), function(x){
+  if (x=='cM') {
+    return('cMono')
+  } else if (x=='ncM') {
+    return('ncMono')
+  } else if (x=='T4') {
+    return('Th')
+  } else if (x=='T8') {
+    return('Tc')
+  } else {
+    return(x)
+  }
+})
+names(new_names) <- NULL
+pbmc@meta.data$cg_cov <- factor(new_names,levels=unique(new_names))
+
+
+# subset data to SLE patients only
+cells_keep <- rownames(pbmc@meta.data)[pbmc@meta.data$Status=='Managed']
+pbmc <- subset(pbmc,cells = cells_keep)
+
+seu = DietSeurat(
+  pbmc,
+  counts = TRUE, # so, raw counts save to adata.layers['counts']
+  data = TRUE, # so, log1p counts save to adata.X when scale.data = False, else adata.layers['data']
+  scale.data = FALSE, # if only scaled highly variable gene, the export to h5ad would fail. set to false
+  features = rownames(pbmc), # export all genes, not just top highly variable genes
+  assays = "RNA",
+  dimreducs = c("pca","umap"),
+  misc = TRUE
+)
+
+seu@meta.data$batch_cov <- as.character(seu@meta.data$batch_cov)
+seu@meta.data$ind_cov <- as.character(seu@meta.data$ind_cov)
+seu@meta.data$ind_cov_batch_cov <- as.character(seu@meta.data$ind_cov_batch_cov)
+seu@meta.data$cg_cov <- as.character(seu@meta.data$cg_cov)
+seu@meta.data$sex <- as.character(seu@meta.data$sex)
+seu@meta.data$Ethnicity <- as.character(seu@meta.data$Ethnicity)
+seu@meta.data$Processing_Cohort <- as.character(seu@meta.data$Processing_Cohort)
+seu@meta.data$ct_cov <- as.character(seu@meta.data$ct_cov)
+seu@meta.data$Status <- as.character(seu@meta.data$Status)
+seu@meta.data$SLE_status <- as.character(seu@meta.data$SLE_status)
+
+# SaveH5Seurat(seu, filename = "/home/jmitchel/data/temp_test_data/lupus_subsetted_seurat_v3_for_scanpy.h5Seurat",overwrite = TRUE)
+# Convert("/home/jmitchel/data/temp_test_data/lupus_subsetted_seurat_v3_for_scanpy.h5Seurat",
+#         dest = "/home/jmitchel/data/temp_test_data/lupus_subsetted_seurat_v3_for_scanpy.h5ad",overwrite = TRUE)
 
 
 

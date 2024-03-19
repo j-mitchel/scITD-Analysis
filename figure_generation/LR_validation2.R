@@ -2,9 +2,9 @@ library(Seurat)
 library(nichenetr)
 library(RColorBrewer)
 library(tidyverse)
-library(nichenetr)
 library(dplyr)
-library(scITD)
+library(devtools)
+load_all('/home/jmitchel/scITD/')
 
 
 ### This script is intended for comparing the results and performance of scITD LR analysis
@@ -365,6 +365,7 @@ parse_scITD_LR_out <- function(myres_mat,sig_thresh) {
     lig <- lig_ct_rec_name[[1]]
     source <- lig_ct_rec_name[[2]]
     rec <- lig_ct_rec_name[[3]]
+    
     
     for (j in 1:ncol(myres_mat)) {
       pv <- lig_ct_rec[j]
@@ -857,80 +858,225 @@ dat_sub_channels <- sapply(1:nrow(dat_sub),function(x) {
 dat_sub_channels_unq <- unique(dat_sub_channels)
 print(length(dat_sub_channels_unq))
 
-## adjust channel extraction fn to give ligand_source_receptor_target
-parse_scITD_LR_out_full <- function(myres_mat,sig_thresh) {
-  ## get unique ligand_source_receptor_target channels from my analysis
-  unique_channels <- c()
-  for (i in 1:nrow(myres_mat)) {
-    lig_ct_rec <- myres_mat[i,]
-    lig_ct_rec_name <- strsplit(rownames(myres_mat)[i],split='_')[[1]]
-    lig <- lig_ct_rec_name[[1]]
-    source <- lig_ct_rec_name[[2]]
-    rec <- lig_ct_rec_name[[3]]
-    
-    for (j in 1:ncol(myres_mat)) {
-      pv <- lig_ct_rec[j]
-      if (!is.na(pv)) {
-        if (pv > (-log10(sig_thresh))) {
-          target_ct <- strsplit(names(pv),split="_")[[1]][[1]]
-          lig_source_rec_target <- paste0(lig,"_",source,"_",rec,"_",target_ct)
-          unique_channels <- c(unique_channels,lig_source_rec_target)
-        }
+
+
+## selecting top 500 LR pairs from each
+N_select <- 200
+dat_sub_channels_unq_top <- dat_sub_channels_unq[1:N_select]
+
+mat <- get_lr_dat(pbmc_container,sig_thresh=.05,factor_select=2)
+mat_df <- as.data.frame(as.table(mat))
+colnames(mat_df) <- c("Row", "Column", "Value")
+
+# Sort the data frame by 'Value' column to get smallest elements
+sorted_df <- mat_df[order(mat_df$Value,decreasing = TRUE), ]
+
+# Select top N smallest elements
+top_N_smallest <- sorted_df[1:N_select, ]
+top_N_smallest$Column <- as.character(top_N_smallest$Column)
+top_N_smallest$Row <- as.character(top_N_smallest$Row)
+top_N_smallest$rec_ct <- sapply(top_N_smallest$Column,function(x){
+  strsplit(x,split='_')[[1]][[1]]
+})
+scITD_top_channels <- paste0(top_N_smallest$Row,'_',top_N_smallest$rec_ct)
+
+# calculate jaccard overlap
+jacc_nnet <- length(intersect(scITD_top_channels,dat_sub_channels_unq_top)) / length(union(scITD_top_channels,dat_sub_channels_unq_top))
+
+# get jaccard from random channels
+rj_all_nnet <- sapply(1:10000,function(i) {
+  ch_samp <- sample(total_dat_sub_channels,N_select)
+  in_both <- intersect(scITD_top_channels,ch_samp)
+  in_either <- union(scITD_top_channels,ch_samp)
+  rand_jaccard <- length(in_both)/length(in_either)
+})
+
+p_enr_nnet <- sum(rj_all_nnet>jacc_nnet)/length(rj_all_nnet)
+
+
+
+
+###### comparing scITD to tensor cell2cell method. Those results processed in python
+### first need to run scITD on the same LR pairs
+
+# load up the lr pairs tested for with tensor cell2cell
+lr_pairs <- read.csv('/home/jmitchel/data/lupus_data/tensor_c2c_LR_pairs.csv',row.names = 1)
+rownames(lr_pairs) <- NULL
+colnames(lr_pairs) <- c('ligand','receptor')
+
+# infer active LR interactions
+pbmc_container <- prep_LR_interact(pbmc_container, lr_pairs, norm_method='trim', scale_factor=10000,
+                                   var_scale_power=.5, batch_var='pool')
+sft_thresh <- c(12,14,12,10,12,9,12)
+pbmc_container <- get_gene_modules(pbmc_container,sft_thresh)
+
+lr_hmap <- compute_LR_interact(pbmc_container, lr_pairs, sig_thresh=.05,
+                               percentile_exp_rec=0.85, add_ld_fact_sig=TRUE)
+
+lr_hmap
+
+# saveRDS(pbmc_container$lr_res,file='/home/jmitchel/data/lupus_data/C2C_scITD_lr_res.rds')
+pbmc_container$lr_res <- readRDS(file='/home/jmitchel/data/lupus_data/C2C_scITD_lr_res.rds')
+
+### loadings cell2cell results
+lr_ldngs <- read.csv('/home/jmitchel/data/lupus_data/tensor_c2c_lr_lds.csv',row.names = 1)
+sample_ldngs <- read.csv('/home/jmitchel/data/lupus_data/tensor_c2c_donor_lds.csv',row.names = 1)
+sender_ldngs <- read.csv('/home/jmitchel/data/lupus_data/tensor_c2c_ct_send_lds.csv',row.names = 1)
+receiver_ldngs <- read.csv('/home/jmitchel/data/lupus_data/tensor_c2c_ct_rec_lds.csv',row.names = 1)
+liana_res <- read.csv('/home/jmitchel/data/lupus_data/tensor_c2c_LR_tests.csv')
+
+rownames(sample_ldngs) <- sapply(rownames(sample_ldngs),function(x){
+  paste(strsplit(x,split=':')[[1]],collapse='')
+})
+
+# first looking at factor correlations by sample scores
+dsc <- pbmc_container$tucker_results[[1]]
+d_both <- intersect(rownames(dsc),rownames(sample_ldngs))
+cormat <- abs(cor(dsc[d_both,],sample_ldngs[d_both,]))
+colnames(cormat) <- paste0('C2C_F',1:ncol(cormat))
+rownames(cormat) <- paste0('scITD_F',1:nrow(cormat))
+
+col_fun = colorRamp2(c(0, 1), c("white", "red"))
+hmap <- Heatmap(cormat,name = "pearson r",
+                cluster_columns = FALSE,
+                col = col_fun,
+                cluster_rows = FALSE,
+                show_row_names = TRUE,
+                show_column_names = TRUE,
+                show_row_dend = FALSE,
+                show_column_dend = FALSE,
+                column_names_side = 'top',
+                row_names_side = 'left',
+                column_names_rot = 30,
+                column_names_gp = grid::gpar(fontsize = 8),
+                row_names_gp = grid::gpar(fontsize = 8),
+                border = TRUE,
+                column_title = 'Donor scores comparison',
+                column_title_gp = gpar(fontsize = 14),
+                cell_fun = function(j, i, x, y, width, height, fill) {
+                  grid::grid.text(sprintf("%.2f", cormat[i, j]), x, y, gp = gpar(fontsize = 10))
+                })
+
+
+# pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/scITD_vs_C2C_dscores.pdf", useDingbats = FALSE,
+#     width = 4.5, height = 3.5)
+hmap
+dev.off()
+
+
+
+### need to extract the significant channels associated with any factor in cell2cell
+top_n_select <- 50
+sig_thresh <- .05
+sig_channels <- c()
+for (f_ndx in 1:ncol(lr_ldngs)) {
+  lds_fact <- lr_ldngs[,f_ndx,drop=FALSE]
+  lds_fact <- lds_fact[order(lds_fact[,1],decreasing=TRUE),,drop=FALSE]
+  top_lr <- rownames(lds_fact)[1:top_n_select]
+  
+  # get top from and to cell types, binarizing by one sd over median
+  send_fact <- sender_ldngs[,f_ndx,drop=FALSE]
+  rec_fact <- receiver_ldngs[,f_ndx,drop=FALSE]
+  
+  sd_send <- sd(send_fact[,1])
+  sd_rec <- sd(rec_fact[,1])
+  
+  send_ct <- rownames(send_fact)[send_fact[,1]>(median(send_fact[,1]) + sd_send)]
+  rec_ct <- rownames(rec_fact)[rec_fact[,1]>(median(rec_fact[,1]) + sd_rec)]
+  
+  if (length(send_ct)==0 | length(rec_ct)==0) {
+    next
+  }
+  
+  ## now selecting the subset of the lr ct combinations that were originally significant
+  ct_combos <- expand.grid(send_ct, rec_ct)
+  ct_combos[,1] <- as.character(ct_combos[,1])
+  ct_combos[,2] <- as.character(ct_combos[,2])
+  ct_combos <- ct_combos[ct_combos[,1] != ct_combos[,2],]
+
+  for (lr in top_lr) {
+    lig_rec <- strsplit(lr,split='^',fixed = TRUE)[[1]]
+    lig <- lig_rec[[1]]
+    rec <- lig_rec[[2]]
+    for (ct_ndx in 1:nrow(ct_combos)) {
+      ct_combo <- ct_combos[ct_ndx,]
+      source_ct <- as.character(ct_combo[1])
+      rec_ct <- as.character(ct_combo[2])
+      lr_res_all_donors <- liana_res[liana_res$ligand_complex==lig & liana_res$receptor_complex==rec & liana_res$source==source_ct & liana_res$target==rec_ct,]
+      # if significant in any donors, keep the interaction
+      if (any(lr_res_all_donors$cellphone_pvals<sig_thresh)) {
+        cur_channel <- paste(lig,source_ct,rec,rec_ct,sep = '_')
+        sig_channels <- c(sig_channels,cur_channel)
       }
     }
   }
-  scITD_channels <- unique(unique_channels)
-  return(scITD_channels)
 }
+sig_channels <- unique(sig_channels)
+length(sig_channels)
 
 
-res <- matrix(nrow=4,ncol=6)
-colnames(res) <- c('padj_thresh','jaccard_coef','rand_jaccard_mean','rand_jaccard_sd','p_enr','num_res')
-p_test <- c(.001,.01,.05,.1)
-for (p in p_test) {
-  lr_dat <- get_lr_dat(pbmc_container,sig_thresh=p,factor_select = 2)
-  channels <- parse_scITD_LR_out_full(lr_dat,sig_thresh=p)
-  dat_sub_channels_unq_top <- dat_sub_channels_unq[1:length(channels)]
-  in_both <- intersect(dat_sub_channels_unq_top,channels)
-  in_either <- union(dat_sub_channels_unq_top,channels)
-  jaccard <- length(in_both)/length(in_either)
-  
-  # get jaccard from random channels
-  rj_all <- sapply(1:10000,function(i) {
-    ch_samp <- sample(total_dat_sub_channels,length(channels))
-    in_both <- intersect(dat_sub_channels_unq_top,ch_samp)
-    in_either <- union(dat_sub_channels_unq_top,ch_samp)
-    rand_jaccard <- length(in_both)/length(in_either)
-  })
-  
-  p_enr <- sum(rj_all>jaccard)/length(rj_all)
-  r_ndx <- which(p_test==p)
-  res[r_ndx,] <- c(p,jaccard,mean(rj_all),sd(rj_all),p_enr,length(channels))
-}
+### get out the significant LR channels from scITD
+N_select <- length(sig_channels)
 
-res <- as.data.frame(res)
-res1 <- res[,c('padj_thresh','jaccard_coef','rand_jaccard_sd')]
-res1[,3] <- rep(0,4)
-res2 <- res[,c('padj_thresh','rand_jaccard_mean','rand_jaccard_sd')]
-colnames(res2) <- c('padj_thresh','jaccard_coef','rand_jaccard_sd')
+mat <- pbmc_container$lr_res
+mat_df <- as.data.frame(as.table(mat))
+colnames(mat_df) <- c("Row", "Column", "Value")
 
-res_transform <- rbind.data.frame(res1,res2)
-res_transform$rand <- c(rep(FALSE,4),rep(TRUE,4))
-res_transform$padj_thresh <- factor(res_transform$padj_thresh,
-                                    levels=c(.1,.05,.01,.001))
-p <- ggplot(res_transform,aes(x=padj_thresh,y=jaccard_coef,fill=rand)) +
-  geom_bar(stat = 'identity',
-           position = "dodge") +
-  geom_errorbar(aes(ymin = jaccard_coef-rand_jaccard_sd, ymax = jaccard_coef+rand_jaccard_sd),
-                color="black", 
-                width=0.1, position=position_dodge(0.9)) +
-  xlab('scITD padj threshold') +
-  ylab('Jaccard coefficient') +
-  theme_bw()
-p
+# Sort the data frame by 'Value' column to get smallest elements
+sorted_df <- mat_df[order(mat_df$Value), ]
 
-# pdf(file = "/home/jmitchel/figures/scITD_revision_figs/LR_jaccard.pdf", useDingbats = FALSE,
-#     width = 4, height = 3)
+# Select top N smallest elements
+top_N_smallest <- sorted_df[1:N_select, ]
+top_N_smallest$Column <- as.character(top_N_smallest$Column)
+top_N_smallest$Row <- as.character(top_N_smallest$Row)
+top_N_smallest$rec_ct <- sapply(top_N_smallest$Column,function(x){
+  strsplit(x,split='_')[[1]][[1]]
+})
+scITD_top_channels <- paste0(top_N_smallest$Row,'_',top_N_smallest$rec_ct)
+
+# calculate jaccard overlap
+jacc_c2c <- length(intersect(scITD_top_channels,sig_channels)) / length(union(scITD_top_channels,sig_channels))
+
+# get jaccard from random channels
+total_dat_sub_channels <- paste(liana_res$ligand_complex,liana_res$source,
+         liana_res$receptor_complex,liana_res$target,sep = '_')
+total_dat_sub_channels <- unique(total_dat_sub_channels)
+print(length(total_dat_sub_channels))
+
+rj_all_c2c <- sapply(1:10000,function(i) {
+  ch_samp <- sample(total_dat_sub_channels,N_select)
+  in_both <- intersect(scITD_top_channels,ch_samp)
+  in_either <- union(scITD_top_channels,ch_samp)
+  rand_jaccard <- length(in_both)/length(in_either)
+})
+
+p_enr_c2c <- sum(rj_all_c2c>jacc_c2c)/length(rj_all_c2c)
+
+# plot the results
+nnet_rand_mean <- mean(rj_all_nnet)
+nnet_rand_sd <- sd(rj_all_nnet)
+c2c_rand_mean <- mean(rj_all_c2c)
+c2c_rand_sd <- sd(rj_all_c2c)
+
+## columns are jaccard, sd, method
+tmp <- cbind.data.frame(c(jacc_nnet, nnet_rand_mean, jacc_c2c, c2c_rand_mean),
+                        c(NA, nnet_rand_sd, NA, c2c_rand_sd),
+                        c('NicheNet','NicheNet','C2C','C2C'),
+                        c('real','random','real','random'))
+colnames(tmp) <- c('jaccard','std','method','type')
+tmp$type <- factor(tmp$type,levels=c('real','random'))
+tmp$method <- factor(tmp$method,levels=c('NicheNet','C2C'))
+p <- ggplot(tmp,aes(x=method,y=jaccard,fill=type)) +
+  geom_bar(stat="identity", color="black", 
+           position=position_dodge()) +
+  ggtitle('Overlap in inferred LR channels between methods') +
+  geom_errorbar(aes(ymin=jaccard-std, ymax=jaccard+std), width=.2,
+                position=position_dodge(.9)) +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+# pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/scitd_nnet_c2c_jaccard_.pdf", useDingbats = FALSE,
+#     width = 4.5, height = 2.5)
 p
 # dev.off()
 

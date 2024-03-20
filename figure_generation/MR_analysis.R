@@ -1,18 +1,20 @@
 
-
 .libPaths(c("/home/jmitchel/R/x86_64-pc-linux-gnu-library/4.0", .libPaths()))
 .libPaths(c("/home/jmitchel/R/x86_64-pc-linux-gnu-library/4.1", .libPaths()))
 .libPaths(c("/home/jmitchel/R/x86_64-pc-linux-gnu-library/4.2", .libPaths()))
 
 library(Seurat)
-library(scITD)
 library(MatrixEQTL)
 library(sccore)
 library(ggplot2)
 library(locuszoomr)
 library(EnsDb.Hsapiens.v75)
 library(ivreg)
+library(OpenImageR)
 library(preprocessCore)
+library(devtools)
+load_all('/home/jmitchel/scITD/')
+source('/home/jmitchel/smr/plot/plot_SMR.r')
 
 # load the SNP data
 vcf_mat <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_total_vcf.rds')
@@ -399,3 +401,178 @@ variants[ndx_get,] # rs8126495
 
 ndx_get <- which(variants$variant==v2)
 variants[ndx_get,] # rs2847224
+
+
+
+
+
+
+### running command line SMR
+# need to add MAF and beta sd for input to SMR
+vcf_mat_sub <- vcf_mat[e_res$snps,]
+af <- rowSums(vcf_mat_sub) / (ncol(vcf_mat_sub)*2)
+e_res$af <- af
+pr_res <- pr_res[rownames(e_res),]
+pr_res$af <- af
+
+a1 <- sapply(rownames(e_res),function(x){
+  strsplit(x,split=':')[[1]][[3]]
+})
+a2 <- sapply(rownames(e_res),function(x){
+  strsplit(x,split=':')[[1]][[4]]
+})
+
+e_res$A1 <- a1
+e_res$A2 <- a2
+pr_res$A1 <- a1
+pr_res$A2 <- a2
+
+# need to calculate se
+e_res$se <- e_res$beta / e_res$statistic
+pr_res$se <- pr_res$beta / pr_res$statistic
+
+# add n stats
+e_res$n <- ncol(pb)
+pr_res$n <- ncol(pb)
+
+# Columns needed for SMR: SNP    A1  A2  freq    b   se  p   n
+e_res <- e_res[,c('snps','A1','A2','af','beta','se','pvalue','n')]
+pr_res <- pr_res[,c('snps','A1','A2','af','beta','se','pvalue','n')]
+colnames(e_res) <- c('SNP','A1','A2','freq','b','se','p','n')
+colnames(pr_res) <- c('SNP','A1','A2','freq','b','se','p','n')
+pr_res <- pr_res[,c('SNP','A2','A1','freq','b','se','p','n')]
+colnames(pr_res) <- c('SNP','A1','A2','freq','b','se','p','n')
+# write.table(pr_res,file='/home/jmitchel/data/lupus_data/for_smr/pr_res.ma',sep = ' ',row.names = FALSE,quote = FALSE)
+
+## eQTL data needs to have slightly different format
+# Columns are chromosome, SNP, genetic distance (can be any arbitary value since it will not be used in the SMR analysis), 
+# basepair position, the effect (coded) allele, the other allele and frequency of the effect allele
+e_res$chromosome <- sapply(rownames(e_res),function(x){
+  strsplit(x,split=':')[[1]][[1]]
+})
+e_res$pos <- sapply(rownames(e_res),function(x){
+  strsplit(x,split=':')[[1]][[2]]
+})
+e_res$genetic_distance <- 0
+e_res_sub <- e_res[,c('chromosome','SNP','genetic_distance','pos','A2','A1','freq')]
+colnames(e_res_sub) <- NULL
+# write.table(e_res_sub,file='/home/jmitchel/data/lupus_data/for_smr/e_res.esi',sep = ' ',row.names = FALSE,quote = FALSE)
+
+gene_pos_dat <- as.data.frame(t(c(21,'ICOSLG',0,45642874,'ICOSLG','-')))
+colnames(gene_pos_dat) <- NULL
+# write.table(gene_pos_dat,file='/home/jmitchel/data/lupus_data/for_smr/e_res.epi',sep = ' ',row.names = FALSE,quote = FALSE)
+
+# SNP    gene    beta    t-stat  p-value FDR
+e_res2 <- me[["all"]][["eqtls"]]
+rownames(e_res2) <- e_res2$snps
+e_res2 <- e_res2[rownames(e_res),]
+e_res2 <- e_res2[,c('snps','gene','beta','statistic','pvalue','FDR')]
+colnames(e_res2) <- c('SNP','gene','beta','t-stat','p-value','FDR')
+# write.table(e_res2,file='/home/jmitchel/data/lupus_data/for_smr/e_res_ss.txt',sep = ' ',row.names = FALSE,quote = FALSE)
+
+# run in command line
+# ./smr --eqtl-summary /home/jmitchel/data/lupus_data/for_smr/e_res_ss.txt --matrix-eqtl-format --make-besd --out /home/jmitchel/data/lupus_data/for_smr/make_besd/e_res 
+# then, moved the besd file to /for/smr/
+# ./smr --bfile /home/jmitchel/data/lupus_data/for_smr/plink --gwas-summary /home/jmitchel/data/lupus_data/for_smr/pr_res.ma --beqtl-summary /home/jmitchel/data/lupus_data/for_smr/e_res --peqtl-smr .05 --out /home/jmitchel/data/lupus_data/for_smr/smr_out --thread-num 1 
+
+## now trying this but with subsets of SNPs for each peak
+snps_pos_peak1 <- c(45590000,45640000)
+snps_pos_peak2 <- c(45645000,45700000)
+
+ndx_keep <- which(e_res$pos>snps_pos_peak1[1] & e_res$pos<snps_pos_peak1[2])
+pr_res_p1 <- pr_res[ndx_keep,]
+e_res_sub_p1 <- e_res_sub[ndx_keep,]
+e_res2_p1 <- e_res2[ndx_keep,]
+# write.table(pr_res_p1,file='/home/jmitchel/data/lupus_data/for_smr/pr_res_p1.ma',sep = ' ',row.names = FALSE,quote = FALSE)
+# write.table(e_res_sub_p1,file='/home/jmitchel/data/lupus_data/for_smr/e_res_p1.esi',sep = ' ',row.names = FALSE,quote = FALSE)
+# write.table(e_res2_p1,file='/home/jmitchel/data/lupus_data/for_smr/e_res_ss_p1.txt',sep = ' ',row.names = FALSE,quote = FALSE)
+
+# ./smr --eqtl-summary /home/jmitchel/data/lupus_data/for_smr/e_res_ss_p1.txt --matrix-eqtl-format --make-besd --out /home/jmitchel/data/lupus_data/for_smr/make_besd/e_res_p1
+# then, moved the besd file to /for/smr/. Also needed to make copy of e_res.epi to e_res_p1.epi
+# ./smr --bfile /home/jmitchel/data/lupus_data/for_smr/plink --gwas-summary /home/jmitchel/data/lupus_data/for_smr/pr_res_p1.ma --beqtl-summary /home/jmitchel/data/lupus_data/for_smr/e_res_p1 --peqtl-smr .05 --out /home/jmitchel/data/lupus_data/for_smr/smr_out_p1 --thread-num 1 
+
+
+ndx_keep <- which(e_res$pos>snps_pos_peak2[1] & e_res$pos<snps_pos_peak2[2])
+pr_res_p2 <- pr_res[ndx_keep,]
+e_res_sub_p2 <- e_res_sub[ndx_keep,]
+e_res2_p2 <- e_res2[ndx_keep,]
+# write.table(pr_res_p2,file='/home/jmitchel/data/lupus_data/for_smr/pr_res_p2.ma',sep = ' ',row.names = FALSE,quote = FALSE)
+# write.table(e_res_sub_p2,file='/home/jmitchel/data/lupus_data/for_smr/e_res_p2.esi',sep = ' ',row.names = FALSE,quote = FALSE)
+# write.table(e_res2_p2,file='/home/jmitchel/data/lupus_data/for_smr/e_res_ss_p2.txt',sep = ' ',row.names = FALSE,quote = FALSE)
+
+# ./smr --eqtl-summary /home/jmitchel/data/lupus_data/for_smr/e_res_ss_p2.txt --matrix-eqtl-format --make-besd --out /home/jmitchel/data/lupus_data/for_smr/make_besd/e_res_p2
+# then, moved the besd file to /for/smr/. Also needed to make copy of e_res.epi to e_res_p1.epi
+# ./smr --bfile /home/jmitchel/data/lupus_data/for_smr/plink --gwas-summary /home/jmitchel/data/lupus_data/for_smr/pr_res_p2.ma --beqtl-summary /home/jmitchel/data/lupus_data/for_smr/e_res_p2 --peqtl-smr .05 --out /home/jmitchel/data/lupus_data/for_smr/smr_out_p2 --thread-num 1 
+
+
+### for plotting results
+image.scale <- function(z, zlim, col = heat.colors(12),
+                        breaks, horiz=TRUE, ylim=NULL, xlim=NULL, ...){
+  if(!missing(breaks)){
+    if(length(breaks) != (length(col)+1)){stop("must have one more break than colour")}
+  }
+  if(missing(breaks) & !missing(zlim)){
+    breaks <- seq(zlim[1], zlim[2], length.out=(length(col)+1)) 
+  }
+  if(missing(breaks) & missing(zlim)){
+    zlim <- range(z, na.rm=TRUE)
+    zlim[2] <- zlim[2]+c(zlim[2]-zlim[1])*(1E-3)#adds a bit to the range in both directions
+    zlim[1] <- zlim[1]-c(zlim[2]-zlim[1])*(1E-3)
+    breaks <- seq(zlim[1], zlim[2], length.out=(length(col)+1))
+  }
+  poly <- vector(mode="list", length(col))
+  for(i in seq(poly)){
+    poly[[i]] <- c(breaks[i], breaks[i+1], breaks[i+1], breaks[i])
+  }
+  xaxt <- ifelse(horiz, "s", "n")
+  yaxt <- ifelse(horiz, "n", "s")
+  if(horiz){YLIM<-c(0,1); XLIM<-range(breaks)}
+  if(!horiz){YLIM<-range(breaks); XLIM<-c(0,1)}
+  if(missing(xlim)) xlim=XLIM
+  if(missing(ylim)) ylim=YLIM
+  plot(1,1,t="n",ylim=ylim, xlim=xlim, xaxt=xaxt, yaxt=yaxt, xaxs="i", yaxs="i", ...)  
+  for(i in seq(poly)){
+    if(horiz){
+      polygon(poly[[i]], c(0,0,1,1), col=col[i], border=NA)
+    }
+    if(!horiz){
+      polygon(c(0,0,1,1), poly[[i]], col=col[i], border=NA)
+    }
+  }
+}
+
+
+# chromosome code, start of gene, end of gene and gene ID
+gene_pos_dat2 <- as.data.frame(t(c(21,45642874,45660826,'ICOSLG')))
+colnames(gene_pos_dat2) <- NULL
+# write.table(gene_pos_dat2,file='/home/jmitchel/data/lupus_data/for_smr/glist-hg19',sep = ' ',row.names = FALSE,quote = FALSE)
+
+# ./smr --bfile /home/jmitchel/data/lupus_data/for_smr/plink --gwas-summary /home/jmitchel/data/lupus_data/for_smr/pr_res_p1.ma --beqtl-summary /home/jmitchel/data/lupus_data/for_smr/e_res_p1 --peqtl-smr .001 --ld-upper-limit .95 --out /home/jmitchel/data/lupus_data/for_smr/smr_plot_p1 --plot --probe ICOSLG --probe-wind 500 --gene-list /home/jmitchel/data/lupus_data/for_smr/glist-hg19
+SMRData = ReadSMRData("/home/jmitchel/data/lupus_data/for_smr/plot/smr_plot_p1.ICOSLG.txt")
+
+# pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/smr_p1.pdf", useDingbats = FALSE,
+#     width = 7, height = 5)
+SMREffectPlot(data=SMRData, trait_name="aSLE_F2")
+dev.off()
+
+
+# ./smr --bfile /home/jmitchel/data/lupus_data/for_smr/plink --gwas-summary /home/jmitchel/data/lupus_data/for_smr/pr_res_p2.ma --beqtl-summary /home/jmitchel/data/lupus_data/for_smr/e_res_p2 --peqtl-smr .001 --ld-upper-limit .95 --out /home/jmitchel/data/lupus_data/for_smr/smr_plot_p2 --plot --probe ICOSLG --probe-wind 500 --gene-list /home/jmitchel/data/lupus_data/for_smr/glist-hg19
+SMRData = ReadSMRData("/home/jmitchel/data/lupus_data/for_smr/plot/smr_plot_p2.ICOSLG.txt")
+
+# pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/smr_p2.pdf", useDingbats = FALSE,
+#     width = 7, height = 6)
+SMREffectPlot(data=SMRData, trait_name="aSLE_F2")
+dev.off()
+
+
+# ./smr --bfile /home/jmitchel/data/lupus_data/for_smr/plink --gwas-summary /home/jmitchel/data/lupus_data/for_smr/pr_res.ma --beqtl-summary /home/jmitchel/data/lupus_data/for_smr/e_res --peqtl-smr .001 --ld-upper-limit .95 --ld-lower-limit 0 --out /home/jmitchel/data/lupus_data/for_smr/smr_plot --plot --probe ICOSLG --probe-wind 500 --gene-list /home/jmitchel/data/lupus_data/for_smr/glist-hg19
+SMRData = ReadSMRData("/home/jmitchel/data/lupus_data/for_smr/plot/smr_plot.ICOSLG.txt")
+
+# pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/smr_full.pdf", useDingbats = FALSE,
+#     width = 7, height = 5)
+SMREffectPlot(data=SMRData, trait_name="aSLE_F2")
+dev.off()
+
+
+
+

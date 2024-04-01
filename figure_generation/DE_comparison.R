@@ -190,7 +190,7 @@ de_cormat <- abs(cor(pb_all,method = 'pearson'))
 
 # cluster genes and run gsea
 hres <- hclust(as.dist(1-de_cormat),method = 'ward.D2')
-hclusts <- cutree(hres, k = 3)
+hclusts <- cutree(hres, k = 4)
 table(hclusts)
 
 ## manually reordering rows and cols by clustering
@@ -202,8 +202,8 @@ g_ct_cev_de <- sapply(colnames(de_cormat2),function(x){
 })
 
 # set up color schemes
-group_col <- c('darkblue','darkgreen','darkorange')
-names(group_col) <- c(1,2,3)
+group_col <- c('darkblue','darkgreen','darkorange','red4')
+names(group_col) <- c(1,2,3,4)
 annot_col <- brewer.pal(7, 'Set3')
 names(annot_col) <- unique(g_ct_cev_de)
 col_fun = colorRamp2(c(0, 1), c("white", "red"))
@@ -225,7 +225,7 @@ hmap_de <- Heatmap(de_cormat2,name = "pearson r",
                    top_annotation=ca_grp,
                    right_annotation=ra_de,
                    border = TRUE,
-                   column_title = 'anti-dsDNA DE genes',
+                   column_title = 'SLEDAI DE genes',
                    column_title_gp = gpar(fontsize = 20))
 hmap_de
 
@@ -235,7 +235,7 @@ bg <- sapply(bg,function(x){
 })
 bg <- unique(bg)
 
-c_g <- names(hclusts)[hclusts==3]
+c_g <- names(hclusts)[hclusts %in% c(3,4)]
 c_g <- sapply(c_g,function(x){
   strsplit(x,split='_')[[1]][[1]]
 })
@@ -254,6 +254,24 @@ go_res_c <- go_res_c@result
 ### some significant gene sets for cluster 3 include:
 # "catecholamine secretion"
 # "regulation of chromosome segregation"
+
+## now trying for just cluster 4
+c_g <- names(hclusts)[hclusts==4]
+c_g <- sapply(c_g,function(x){
+  strsplit(x,split='_')[[1]][[1]]
+})
+
+go_res_c <- enrichGO(gene = c_g,
+                     universe = bg,
+                     OrgDb         = org.Hs.eg.db,
+                     keyType       = 'SYMBOL',
+                     ont           = 'BP',
+                     pAdjustMethod = "BH",
+                     pvalueCutoff  = .01,
+                     qvalueCutoff  = .05,
+                     minGSSize=10,
+                     maxGSSize=500)
+go_res_c <- go_res_c@result
 
 
 ## now getting correlation matrix for scITD F1 significant genes
@@ -452,43 +470,50 @@ pval_de <- phyper(total_intersect_de-1, sample_size, num_bg-sample_size, gset_si
 # gene sets, clusters, cell types, and significance in IFN DE
 genes_lab_de1 <- go_bp_res_de[go_bp_res_de$Description=='cellular response to type I interferon','geneID']
 genes_lab_de2 <- go_bp_res_de[go_bp_res_de$Description=="catecholamine secretion",'geneID']
-genes_lab_de3 <- go_bp_res_de[go_bp_res_de$Description=="regulation of chromosome segregation",'geneID']
-genes_lab_de4 <- go_mf_res_de[go_mf_res_de$Description=="exonuclease activity, active with either ribo- or deoxyribonucleic acids and producing 5'-phosphomonoesters" ,'geneID']
+genes_lab_de3 <- go_bp_res_de[go_bp_res_de$Description=="chromosome segregation",'geneID']
+# genes_lab_de3 <- go_bp_res_de[go_bp_res_de$Description=="regulation of chromosome segregation",'geneID']
+genes_lab_de4 <- go_bp_res_de[go_bp_res_de$Description=="organic hydroxy compound metabolic process",'geneID']
+genes_lab_de5 <- go_mf_res_de[go_mf_res_de$Description=="exonuclease activity, active with either ribo- or deoxyribonucleic acids and producing 5'-phosphomonoesters" ,'geneID']
 
 genes_lab_de1 <- unlist(strsplit(genes_lab_de1,split='/'))
 genes_lab_de2 <- unlist(strsplit(genes_lab_de2,split='/'))
 genes_lab_de3 <- unlist(strsplit(genes_lab_de3,split='/'))
 genes_lab_de4 <- unlist(strsplit(genes_lab_de4,split='/'))
+genes_lab_de5 <- unlist(strsplit(genes_lab_de5,split='/'))
 
 genes_lab_de <- cbind.data.frame(c(de_genes_id %in% intersect_genes_de),
                                  c(de_genes_only %in% genes_lab_de1),
                                  c(de_genes_only %in% genes_lab_de2),
                                  c(de_genes_only %in% genes_lab_de3),
-                                 c(de_genes_only %in% genes_lab_de4))
+                                 c(de_genes_only %in% genes_lab_de4),
+                                 c(de_genes_only %in% genes_lab_de5))
 rownames(genes_lab_de) <- de_genes_id
-colnames(genes_lab_de) <- c('IFN_stim_DE','GO_IFN','GO_catecholamine','GO_chrom_seg','GO_exonuclease')
+colnames(genes_lab_de) <- c('IFN_stim_DE','GO_IFN','GO_catecholamine','GO_chrom_seg','GO_hydroxy_metab','GO_exonuclease')
 genes_lab_de$IFN_stim_DE <- factor(genes_lab_de$IFN_stim_DE,levels=c(TRUE,FALSE))
 genes_lab_de$GO_IFN <- factor(genes_lab_de$GO_IFN,levels=c(TRUE,FALSE))
 genes_lab_de$GO_catecholamine <- factor(genes_lab_de$GO_catecholamine,levels=c(TRUE,FALSE))
 genes_lab_de$GO_chrom_seg <- factor(genes_lab_de$GO_chrom_seg,levels=c(TRUE,FALSE))
+genes_lab_de$GO_hydroxy_metab <- factor(genes_lab_de$GO_hydroxy_metab,levels=c(TRUE,FALSE))
 genes_lab_de$GO_exonuclease <- factor(genes_lab_de$GO_exonuclease,levels=c(TRUE,FALSE))
 levels(genes_lab_de$IFN_stim_DE) <- c('in_set','not_in_set')
 levels(genes_lab_de$GO_IFN) <- c('in_set','not_in_set')
 levels(genes_lab_de$GO_catecholamine) <- c('in_set','not_in_set')
 levels(genes_lab_de$GO_chrom_seg) <- c('in_set','not_in_set')
+levels(genes_lab_de$GO_hydroxy_metab) <- c('in_set','not_in_set')
 levels(genes_lab_de$GO_exonuclease) <- c('in_set','not_in_set')
 
 # ordering the genes the same as in the preclustered cor matrix
 genes_lab_de <- genes_lab_de[rownames(de_cormat2),]
 
-de_col <- c('darkred','gray95')
+de_col <- c('red','gray95')
 names(de_col) <- c('in_set','not_in_set')
 ca_de <- ComplexHeatmap::HeatmapAnnotation(IFN_stim_DE = genes_lab_de$IFN_stim_DE,
                                            GO_IFN = genes_lab_de$GO_IFN,
                                            GO_catecholamine = genes_lab_de$GO_catecholamine,
                                            GO_chrom_seg = genes_lab_de$GO_chrom_seg,
+                                           GO_hydroxy_metab = genes_lab_de$GO_hydroxy_metab,
                                            GO_exonuclease = genes_lab_de$GO_exonuclease,
-                                           col = list(IFN_stim_DE = de_col,GO_IFN = de_col,GO_catecholamine = de_col,GO_chrom_seg = de_col,GO_exonuclease = de_col),
+                                           col = list(IFN_stim_DE = de_col,GO_IFN = de_col,GO_catecholamine = de_col,GO_chrom_seg = de_col,GO_hydroxy_metab = de_col,GO_exonuclease = de_col),
                                            show_legend = FALSE,show_annotation_name = TRUE,
                                            annotation_name_side = 'left')
 
@@ -505,11 +530,11 @@ hmap_de <- Heatmap(de_cormat2,name = "pearson r",
                    right_annotation=ra_de,
                    top_annotation=ca_grp,
                    border = TRUE,
-                   column_title = 'anti-dsDNA DE genes',
-                   column_title_gp = gpar(fontsize = 20),
+                   column_title = 'SLEDAI DE genes',
+                   column_title_gp = gpar(fontsize = 14),
                    use_raster = TRUE)
 
-# pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/DE_hmap_gset.pdf", useDingbats = FALSE,
+# pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/DE_hmap_gset3.pdf", useDingbats = FALSE,
 #     width = 7, height = 4)
 hmap_de
 dev.off()
@@ -518,43 +543,49 @@ dev.off()
 # now for scITD result
 genes_lab_sc1 <- go_bp_res_f1[go_bp_res_f1$Description=='cellular response to type I interferon','geneID']
 genes_lab_sc2 <- go_bp_res_f1[go_bp_res_f1$Description=="catecholamine secretion",'geneID']
-genes_lab_sc3 <- go_bp_res_f1[go_bp_res_f1$Description=="regulation of chromosome segregation",'geneID']
-genes_lab_sc4 <- go_mf_res_f1[go_mf_res_f1$Description=="exonuclease activity, active with either ribo- or deoxyribonucleic acids and producing 5'-phosphomonoesters" ,'geneID']
+genes_lab_sc3 <- go_bp_res_f1[go_bp_res_f1$Description=="chromosome segregation",'geneID']
+genes_lab_sc4 <- go_bp_res_f1[go_bp_res_f1$Description=="organic hydroxy compound metabolic process",'geneID']
+genes_lab_sc5 <- go_mf_res_f1[go_mf_res_f1$Description=="exonuclease activity, active with either ribo- or deoxyribonucleic acids and producing 5'-phosphomonoesters" ,'geneID']
 
 genes_lab_sc1 <- unlist(strsplit(genes_lab_sc1,split='/'))
 genes_lab_sc2 <- unlist(strsplit(genes_lab_sc2,split='/'))
 genes_lab_sc3 <- unlist(strsplit(genes_lab_sc3,split='/'))
 genes_lab_sc4 <- unlist(strsplit(genes_lab_sc4,split='/'))
+genes_lab_sc5 <- unlist(strsplit(genes_lab_sc5,split='/'))
 
 genes_lab_sc <- cbind.data.frame(c(scITD_genes_id %in% intersect_genes_scITD),
                                  c(scITD_genes_only %in% genes_lab_sc1),
                                  c(scITD_genes_only %in% genes_lab_sc2),
                                  c(scITD_genes_only %in% genes_lab_sc3),
-                                 c(scITD_genes_only %in% genes_lab_sc4))
+                                 c(scITD_genes_only %in% genes_lab_sc4),
+                                 c(scITD_genes_only %in% genes_lab_sc5))
 rownames(genes_lab_sc) <- scITD_genes_id
-colnames(genes_lab_sc) <- c('IFN_stim_DE','GO_IFN','GO_catecholamine','GO_chrom_seg','GO_exonuclease')
+colnames(genes_lab_sc) <- c('IFN_stim_DE','GO_IFN','GO_catecholamine','GO_chrom_seg','GO_hydroxy_metab','GO_exonuclease')
 genes_lab_sc$IFN_stim_DE <- factor(genes_lab_sc$IFN_stim_DE,levels=c(TRUE,FALSE))
 genes_lab_sc$GO_IFN <- factor(genes_lab_sc$GO_IFN,levels=c(TRUE,FALSE))
 genes_lab_sc$GO_catecholamine <- factor(genes_lab_sc$GO_catecholamine,levels=c(TRUE,FALSE))
 genes_lab_sc$GO_chrom_seg <- factor(genes_lab_sc$GO_chrom_seg,levels=c(TRUE,FALSE))
+genes_lab_sc$GO_hydroxy_metab <- factor(genes_lab_sc$GO_hydroxy_metab,levels=c(TRUE,FALSE))
 genes_lab_sc$GO_exonuclease <- factor(genes_lab_sc$GO_exonuclease,levels=c(TRUE,FALSE))
 levels(genes_lab_sc$IFN_stim_DE) <- c('in_set','not_in_set')
 levels(genes_lab_sc$GO_IFN) <- c('in_set','not_in_set')
 levels(genes_lab_sc$GO_catecholamine) <- c('in_set','not_in_set')
 levels(genes_lab_sc$GO_chrom_seg) <- c('in_set','not_in_set')
+levels(genes_lab_sc$GO_hydroxy_metab) <- c('in_set','not_in_set')
 levels(genes_lab_sc$GO_exonuclease) <- c('in_set','not_in_set')
 
 # ordering the genes the same as in the preclustered cor matrix
 genes_lab_sc <- genes_lab_sc[rownames(scITD_cormat),]
 
-de_col <- c('darkred','gray95')
+de_col <- c('red','gray95')
 names(de_col) <- c('in_set','not_in_set')
 ca_scITD <- ComplexHeatmap::HeatmapAnnotation(IFN_stim_DE = genes_lab_sc$IFN_stim_DE,
                                               GO_IFN = genes_lab_sc$GO_IFN,
                                               GO_catecholamine = genes_lab_sc$GO_catecholamine,
                                               GO_chrom_seg = genes_lab_sc$GO_chrom_seg,
+                                              GO_hydroxy_metab = genes_lab_sc$GO_hydroxy_metab,
                                               GO_exonuclease = genes_lab_sc$GO_exonuclease,
-                                           col = list(IFN_stim_DE = de_col,GO_IFN = de_col,GO_catecholamine = de_col,GO_chrom_seg = de_col,GO_exonuclease = de_col),
+                                           col = list(IFN_stim_DE = de_col,GO_IFN = de_col,GO_catecholamine = de_col,GO_chrom_seg = de_col,GO_hydroxy_metab = de_col,GO_exonuclease = de_col),
                                            show_legend = FALSE,show_annotation_name = TRUE,
                                            annotation_name_side = 'left')
 
@@ -578,14 +609,14 @@ scITD_hmap <- Heatmap(scITD_cormat,name = "pearson r",
                       right_annotation=ra_f1,
                       bottom_annotation = ca_scITD,
                       column_title = 'scITD F1 significant genes',
-                      column_title_gp = gpar(fontsize = 20),
+                      column_title_gp = gpar(fontsize = 14),
                       border=TRUE,
                       use_raster = TRUE)
 
 
 
 
-# pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/F1_cor_hmap_gset.pdf", useDingbats = FALSE,
+# pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/F1_cor_hmap_gset3.pdf", useDingbats = FALSE,
 #     width = 6, height = 4)
 scITD_hmap
 dev.off()

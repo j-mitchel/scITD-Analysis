@@ -14,7 +14,7 @@ library(ggplot2)
 library(dplyr)
 library(MOFAcellulaR)
 library(devtools)
-load_all('/home/jmitchel/splatter')
+load_all('/home/jmitchel/splatter') ### need to load splatter package with modified file found in misc/splatPop-simulate.R
 library(reticulate)
 reticulate::use_condaenv("sandbox", required=TRUE)
 

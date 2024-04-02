@@ -145,6 +145,13 @@ d_meta$donors <- NULL
 d_meta$Ethnicity <- factor(d_meta$Ethnicity,levels=c('European','Asian'))
 d_meta$processing <- factor(d_meta$processing,levels=unique(d_meta$processing))
 
+# ##### testing adding the lead snp for first peak as a covariate!
+# # using just the first peak
+# d_meta$g_covar <- t(vcf_mat_sub[c('21:45624136:C:T'),rownames(d_meta)])
+# # using both lead eQTL snps
+# d_meta$g_covar <- t(vcf_mat_sub[c('21:45624136:C:T',"21:45660835:C:A"),rownames(d_meta)])
+# #####
+
 mm <- model.matrix(~., d_meta)
 mm <- mm[,colSums(mm)!=0]
 mm <- mm[,2:ncol(mm)] # remove intercept term

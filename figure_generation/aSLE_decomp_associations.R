@@ -1,5 +1,4 @@
 library(Seurat)
-library(scITD)
 library(conos)
 library(ggplot2)
 library(coda.base)
@@ -7,6 +6,8 @@ library(RColorBrewer)
 library(readxl)
 library(MASS)
 library(ggrastr)
+library(devtools)
+load_all('/home/jmitchel/scITD/')
 
 # conos object from preprocessing/embedding_prep.R file
 con <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_conos2.rds')
@@ -181,6 +182,7 @@ pbmc_container$tucker_results[[1]][,1] <- pbmc_container$tucker_results[[1]][,1]
 pbmc_container$tucker_results[[2]][1,] <- pbmc_container$tucker_results[[2]][1,] * -1
 pbmc_container$projection_data[[1]][1,] <- pbmc_container$projection_data[[1]][1,] * -1
 
+
 pbmc_container <- get_meta_associations(pbmc_container,vars_test=c('sex','Age','pool','processing','Ethnicity'),
                                         stat_use='pval')
 
@@ -194,7 +196,7 @@ pbmc_container <- plot_donor_matrix(pbmc_container,
 
 pbmc_container$plots$donor_matrix
 
-
+# saveRDS(pbmc_container,file='/home/jmitchel/data/lupus_data/lupus_container_w_decomp.rds')
 
 
 

@@ -860,7 +860,7 @@ print(length(dat_sub_channels_unq))
 
 
 
-## selecting top 500 LR pairs from each
+## selecting top 200 LR pairs from each
 N_select <- 200
 dat_sub_channels_unq_top <- dat_sub_channels_unq[1:N_select]
 

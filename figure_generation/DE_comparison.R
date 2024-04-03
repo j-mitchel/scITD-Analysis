@@ -81,6 +81,7 @@ pbmc_container$tucker_results[[1]][,1] <- pbmc_container$tucker_results[[1]][,1]
 pbmc_container$tucker_results[[2]][1,] <- pbmc_container$tucker_results[[2]][1,] * -1
 pbmc_container$projection_data[[1]][1,] <- pbmc_container$projection_data[[1]][1,] * -1
 
+pbmc_container <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_container_w_decomp.rds')
 
 
 #### recomputing tensor with all expressed genes, not just ones used in the tensor
@@ -793,20 +794,31 @@ rownames(dsc) <- trim_names
 # g_to_label2 <- c('FKBP5', 'ZBTB16', 'TNFAIP3', 'PDK4', 'TSC22D3')
 # g_to_label <- fgsea_res_f3[fgsea_res_f3$pathway=='GOBP_RESPONSE_TO_HORMONE','leadingEdge'][[1]][[1]][1:15]
 # g_to_label <- fgsea_res_f3[fgsea_res_f3$pathway=='GOBP_CELLULAR_RESPONSE_TO_CORTICOSTEROID_STIMULUS','leadingEdge'][[1]][[1]]
+g_to_label <- g_to_label[!(g_to_label %in% 'ZFP36L1')] # just removing it because it's the only one going the opposite direction, not an issue though
 pb <- pbmc_container$scMinimal_ctype[['cMono']]$pseudobulk
 pb <- pb[names(trim_names),g_to_label]
 rownames(pb) <- trim_names
 clin_vars_use <- clin_vars[trim_names,'prednisone']
-pb <- pb[clin_vars_use==1,]
+names(clin_vars_use) <- trim_names
+# pb <- pb[clin_vars_use==1,]
 f3_dsc <- dsc[rownames(pb),3] 
 pb <- t(pb)
 ndx_order <- order(f3_dsc,decreasing = FALSE)
 pb <- pb[,ndx_order]
 f3_dsc <- f3_dsc[ndx_order]
+clin_vars_use <- clin_vars_use[ndx_order]
 
 col_fun_dsc = colorRamp2(c(min(f3_dsc),0, max(f3_dsc)), c("darkgreen","white", "darkorange"))
 ca_dsc <- ComplexHeatmap::HeatmapAnnotation(f3_dsc = f3_dsc,
                                             col = list(f3_dsc = col_fun_dsc),
+                                            show_legend = TRUE)
+
+clin_vars_use <- factor(clin_vars_use,levels=c(1,0))
+levels(clin_vars_use) <- c('Prednisone','No prednisone')
+col_fun_pred <- c('yellow','green')
+names(col_fun_pred) <- c('Prednisone','No prednisone')
+pred_use <- ComplexHeatmap::HeatmapAnnotation(pred_use = clin_vars_use,
+                                            col = list(pred_use = col_fun_pred),
                                             show_legend = TRUE)
 
 col_fun_expr = colorRamp2(c(min(pb),0, max(pb)), c("darkblue","white", "darkred"))
@@ -819,12 +831,13 @@ hmap_expr <- Heatmap(pb,name = "expression",
                    show_row_dend = FALSE,
                    show_column_dend = FALSE,
                    top_annotation=ca_dsc,
+                   bottom_annotation = pred_use,
                    border = TRUE,
-                   column_title = 'Hormone response gene expression\nin prednisone patients',
+                   column_title = 'Hormone response gene expression',
                    column_title_gp = gpar(fontsize = 14))
 
-# pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/pred_hormone_expr2.pdf", useDingbats = FALSE,
-#     width = 5.5, height = 4)
+pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/pred_hormone_expr3.pdf", useDingbats = FALSE,
+    width = 5.5, height = 3.5)
 hmap_expr
 dev.off()
 

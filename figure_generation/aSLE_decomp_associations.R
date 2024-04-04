@@ -197,7 +197,7 @@ pbmc_container <- plot_donor_matrix(pbmc_container,
 pbmc_container$plots$donor_matrix
 
 # saveRDS(pbmc_container,file='/home/jmitchel/data/lupus_data/lupus_container_w_decomp.rds')
-
+pbmc_container <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_container_w_decomp.rds')
 
 
 #### computing and adding relevant clinical associations to the metadata associations
@@ -704,36 +704,28 @@ plot_gsea_hmap_w_similarity(pbmc_container,factor_select=1,direc='up',thresh=.05
 plot_gsea_sub(pbmc_container,thresh=.05,clust_select=3)
 
 ## f1 sets to show on loading hmap
+# gsets <- c("GOBP_RESPONSE_TO_TYPE_I_INTERFERON",
+#            "GOBP_RESPONSE_TO_INTERFERON_GAMMA",
+#            "GOBP_PROTEOLYSIS",
+#            "GOBP_TUMOR_NECROSIS_FACTOR_MEDIATED_SIGNALING_PATHWAY",
+#            "GOBP_INTERLEUKIN_1_PRODUCTION",
+#            "GOBP_TUMOR_NECROSIS_FACTOR_SUPERFAMILY_CYTOKINE_PRODUCTION",
+#            "GOBP_MYELOID_LEUKOCYTE_ACTIVATION",
+#            "GOBP_INTERLEUKIN_6_PRODUCTION",
+#            "GOBP_APOPTOTIC_CELL_CLEARANCE",
+#            "GOBP_REGULATION_OF_LEUKOCYTE_PROLIFERATION",
+#            "GOBP_APOPTOTIC_SIGNALING_PATHWAY",
+#            "GOBP_REGULATION_OF_CELL_CYCLE",
+#            "GOBP_NEGATIVE_REGULATION_OF_GROWTH",
+#            "GOBP_VESICLE_BUDDING_FROM_MEMBRANE",
+#            "GOBP_REGULATION_OF_NIK_NF_KAPPAB_SIGNALING")
+
 gsets <- c("GOBP_RESPONSE_TO_TYPE_I_INTERFERON",
-           "GOBP_RESPONSE_TO_INTERFERON_GAMMA",
-           "GOBP_PROTEOLYSIS",
-           "GOBP_TUMOR_NECROSIS_FACTOR_MEDIATED_SIGNALING_PATHWAY",
-           "GOBP_INTERLEUKIN_1_PRODUCTION",
-           "GOBP_TUMOR_NECROSIS_FACTOR_SUPERFAMILY_CYTOKINE_PRODUCTION",
            "GOBP_MYELOID_LEUKOCYTE_ACTIVATION",
-           "GOBP_INTERLEUKIN_6_PRODUCTION",
-           "GOBP_APOPTOTIC_CELL_CLEARANCE",
-           "GOBP_REGULATION_OF_LEUKOCYTE_PROLIFERATION",
-           "GOBP_APOPTOTIC_SIGNALING_PATHWAY",
-           "GOBP_REGULATION_OF_CELL_CYCLE",
-           "GOBP_NEGATIVE_REGULATION_OF_GROWTH",
-           "GOBP_VESICLE_BUDDING_FROM_MEMBRANE",
            "GOBP_REGULATION_OF_NIK_NF_KAPPAB_SIGNALING")
 
 gset_cmap <- c('blue',
-               'black',
-               'black',
-               'black',
-               'black',
-               'black',
-               'orange',
-               'black',
-               'black',
-               'black',
-               'black',
-               'black',
-               'black',
-               'black',
+               'maroon',
                'forest green')
 #######
 
@@ -754,10 +746,14 @@ pbmc_container <- plot_loadings_annot(pbmc_container, factor_select=1, use_sig_o
 # dev.off()
 
 hm_list <- plot_select_sets(pbmc_container, 1, gsets, color_sets=gset_cmap, 
-                            cl_rows=F, myfontsize=6.5, h_w=c(6,6.5))
+                            cl_rows=F, myfontsize=6.5, h_w=c(2,6.5))
 
 hm_list
 
+pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/sle_f1_sel_gsets.pdf", useDingbats = FALSE,
+    width = 10, height = 3)
+hm_list
+dev.off()
 
 ### Figure 2d
 ## plotting just specific genes h_w=c(9,6.5) original
@@ -775,7 +771,70 @@ pbmc_container <- plot_loadings_annot(pbmc_container, factor_select=1, use_sig_o
 
 
 
+pbmc_container <- run_gsea_one_factor(pbmc_container, factor_select=2, method="fgsea", thresh=0.05,
+                                      db_use=c("GO"))
 
+gsets <- c('GOBP_CELL_CYCLE',
+           'GOBP_CELL_MIGRATION',
+           'GOBP_P38MAPK_CASCADE')
+
+gset_cmap <- c('blue','maroon','forest green')
+
+names(gset_cmap) <- gsets
+
+gset_cmap_sub <- gset_cmap[gset_cmap!='black']
+gset_sub <- names(gset_cmap_sub)
+
+pbmc_container <- plot_loadings_annot(pbmc_container, factor_select=2, use_sig_only=TRUE, nonsig_to_zero=TRUE, annot='none',
+                                      pathways=NULL, sim_de_donor_group=NULL, sig_thresh=0.01, display_genes=FALSE,
+                                      gene_callouts=FALSE, callout_n_gene_per_ctype=8, callout_ctypes=NULL, 
+                                      le_set_callouts=gset_sub, le_set_colormap=gset_cmap_sub, le_set_num_per=7, show_le_legend=FALSE,
+                                      show_xlab=TRUE, show_var_explained=TRUE, reset_other_factor_plots=FALSE, draw_plot=TRUE,
+                                      clust_method='complete', h_w=c(9,6.5))
+
+hm_list <- plot_select_sets(pbmc_container, 2, gsets, color_sets=gset_cmap, 
+                            cl_rows=F, myfontsize=6.5, h_w=c(2,6.5))
+
+hm_list
+
+pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/sle_f2_sel_gsets.pdf", useDingbats = FALSE,
+    width = 10, height = 3)
+hm_list
+dev.off()
+
+
+
+
+pbmc_container <- run_gsea_one_factor(pbmc_container, factor_select=3, method="fgsea", thresh=0.05,
+                                      db_use=c("GO"))
+
+gsets <- c('GOBP_RESPONSE_TO_HORMONE',
+           'GOBP_POSITIVE_REGULATION_OF_CELL_DIFFERENTIATION',
+           'GOBP_ANTIGEN_PROCESSING_AND_PRESENTATION_OF_EXOGENOUS_PEPTIDE_ANTIGEN_VIA_MHC_CLASS_II')
+
+gset_cmap <- c('blue','maroon','forest green')
+
+names(gset_cmap) <- gsets
+
+gset_cmap_sub <- gset_cmap[gset_cmap!='black']
+gset_sub <- names(gset_cmap_sub)
+
+pbmc_container <- plot_loadings_annot(pbmc_container, factor_select=3, use_sig_only=TRUE, nonsig_to_zero=TRUE, annot='none',
+                                      pathways=NULL, sim_de_donor_group=NULL, sig_thresh=0.01, display_genes=FALSE,
+                                      gene_callouts=FALSE, callout_n_gene_per_ctype=8, callout_ctypes=NULL, 
+                                      le_set_callouts=gset_sub, le_set_colormap=gset_cmap_sub, le_set_num_per=7, show_le_legend=FALSE,
+                                      show_xlab=TRUE, show_var_explained=TRUE, reset_other_factor_plots=FALSE, draw_plot=TRUE,
+                                      clust_method='complete', h_w=c(9,6.5))
+
+hm_list <- plot_select_sets(pbmc_container, 3, gsets, color_sets=gset_cmap, 
+                            cl_rows=F, myfontsize=6.5, h_w=c(2,6.5))
+
+hm_list
+
+pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/sle_f3_sel_gsets.pdf", useDingbats = FALSE,
+    width = 10, height = 3)
+hm_list
+dev.off()
 
 
 

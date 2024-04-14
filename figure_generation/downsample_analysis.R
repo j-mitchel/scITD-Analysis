@@ -128,6 +128,7 @@ p <- ggplot(tmp2,aes(x=prop,y=mean_cor,color=var_type)) +
   ylab('Correlation to original factors') +
   theme_bw()
 
+## Figure S2e
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/downsample_analysis.pdf", useDingbats = FALSE,
 #     width = 5, height = 3.5)
 p

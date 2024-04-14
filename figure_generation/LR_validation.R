@@ -466,7 +466,7 @@ scITD_c2c_dat <- readRDS(file='/home/jmitchel/data/lupus_data/C2C_scITD_lr_res.r
 # parsing scITD results with c2c lr pairs
 scITD_c2c_full <- get_matching_scITD_pairs(scITD_c2c_dat,length(c2c_sig_channels_full))
 
-# loading scTensor results
+# loading scTensor results from /scTensor_test.R file
 gene_conv <- readRDS('/home/jmitchel/data/lupus_data/sle_genes_ncbi.rds') # to convert id's to gene symbols
 sc_tensor_full <- readRDS(file='/home/jmitchel/data/lupus_data/scTensor_res.rds')
 l_ct_f <- sc_tensor_full[[1]]
@@ -800,7 +800,7 @@ full_res_mat$frac <- round(full_res_mat$frac,digits=2)
 full_res_mat$method <- factor(full_res_mat$method,levels = c('NicheNet','scITD_nnet','TensorC2C','scITD_c2c','scTensor','scITD_scT'))
 full_res_mat$type <- factor(full_res_mat$type,levels = c('random','real'))
 
-saveRDS(full_res_mat,file='/home/jmitchel/data/lupus_data/full_lr_benchmarking_table6.rds')
+# saveRDS(full_res_mat,file='/home/jmitchel/data/lupus_data/full_lr_benchmarking_table6.rds')
 full_res_mat <- readRDS(file='/home/jmitchel/data/lupus_data/full_lr_benchmarking_table6.rds')
 
 p <- ggplot(full_res_mat,aes(y = type, x = num_sig, fill = posneg)) +
@@ -818,7 +818,7 @@ p <- ggplot(full_res_mat,aes(y = type, x = num_sig, fill = posneg)) +
         panel.spacing = unit(-.01,"cm"))
 p
 
-
+## Figure S7b
 pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/lr_benchmarking_new2.pdf", useDingbats = FALSE,
     width = 5.5, height = 6.5)
 p
@@ -881,12 +881,13 @@ p <- ggplot(tmp,aes(x=method,y=jaccard,fill=type)) +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5))
 
+## Figure S7c
 pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/scitd_nnet_c2c_jaccard3.pdf", useDingbats = FALSE,
     width = 4.5, height = 2.5)
 p
 dev.off()
 
-saveRDS(tmp,file='/home/jmitchel/data/lupus_data/lr_jaccard_table2.rds')
+# saveRDS(tmp,file='/home/jmitchel/data/lupus_data/lr_jaccard_table2.rds')
 
 
 # things changed from previously

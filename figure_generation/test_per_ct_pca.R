@@ -95,7 +95,7 @@ hmap <- Heatmap(cormat,name = "pearson r",
                   grid::grid.text(sprintf("%.2f", cormat[i, j]), x, y, gp = gpar(fontsize = 10))
                 })
 
-
+## Figure S2b
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/two_ct_pca_cors.pdf", useDingbats = FALSE,
 #     width = 4.5, height = 3.5)
 hmap

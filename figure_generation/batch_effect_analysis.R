@@ -129,6 +129,7 @@ pbmc_container_uncorrected <- plot_donor_matrix(pbmc_container_uncorrected,
                                     cluster_by_meta='pool',
                                     meta_vars='pool')
 
+
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/batch_dscores.pdf", useDingbats = FALSE,
 #     width = 7, height = 6)
 pbmc_container_uncorrected$plots$donor_matrix
@@ -378,6 +379,7 @@ pbmc_container_uncorrected <- plot_donor_matrix(pbmc_container_uncorrected,
                                     meta_vars=c('pool'),
                                     cluster_by_meta='pool')
 
+# ## Figure S2g
 pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/uncorrected_dscores2.pdf", useDingbats = FALSE,
     width = 7.5, height = 6)
 pbmc_container_uncorrected$plots$donor_matrix
@@ -415,7 +417,7 @@ hmap <- Heatmap(cormat,name = "pearson r",
                   grid::grid.text(sprintf("%.2f", cormat[i, j]), x, y, gp = gpar(fontsize = 10))
                 })
 
-
+## Figure S2h
 pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/corrected_vs_uncorrected_dscores2.pdf", useDingbats = FALSE,
     width = 7, height = 4)
 hmap
@@ -485,6 +487,7 @@ pbmc_container_cor2 <- plot_donor_matrix(pbmc_container_cor2,
                                          cluster_by_meta='pool',
                                          meta_vars='pool')
 
+## Figure S2f
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/limma_dscores.pdf", useDingbats = FALSE,
 #     width = 7, height = 6)
 pbmc_container_cor2$plots$donor_matrix
@@ -592,7 +595,7 @@ hmap <- Heatmap(cormat,name = "pearson r",
                   grid::grid.text(sprintf("%.2f", cormat[i, j]), x, y, gp = gpar(fontsize = 10))
                 })
 
-
+## Figure S2f
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/norm_compare_dscores.pdf", useDingbats = FALSE,
 #     width = 4.5, height = 3.5)
 hmap

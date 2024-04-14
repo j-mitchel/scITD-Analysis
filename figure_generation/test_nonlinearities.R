@@ -247,6 +247,7 @@ p2 <- ggplot(res_auc,aes(x=method,y=auc)) +
 library(cowplot)
 fig <- plot_grid(p1,p2,nrow=1,align = 'h')
 
+## Figure S6h
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/sim_nonlinear.pdf", useDingbats = FALSE,
 #     width = 5, height = 2.75)
 fig

@@ -133,7 +133,7 @@ pbmc_container <- determine_ranks_tucker(pbmc_container, max_ranks_test=c(14,20)
                                          scale_var=TRUE,
                                          var_scale_power=.5)
 
-### Figure S2b
+### Figure S2c
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/sle_only_rank_determination2.pdf", useDingbats = FALSE,
 #     width = 9, height = 7)
 pbmc_container$plots$rank_determination_plot
@@ -151,7 +151,7 @@ p <- p +
   theme_bw()
 p
 
-### Figure S2c
+### 
 # pdf("/home/jmitchel/figures/scITD_revision_figs2/sle_only_min_sig_genes.pdf", width = 4, height = 4)
 p
 # dev.off()
@@ -458,6 +458,7 @@ p4
 fig <- cowplot::plot_grid(p1,p2,p3,p4,nrow=2,ncol=2,align = 'hv')
 fig
 
+### Figure S4a
 pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/sle_f2_nephritis_interaction.pdf", useDingbats = FALSE,
     width = 8, height = 4)
 fig
@@ -484,7 +485,7 @@ dscores <- tmp$dscore[(floor(window_size/2)+1):(nrow(tmp)-floor(window_size/2))]
 plot_df <- cbind.data.frame(stored_counts,dscores)
 plot_df$stored_counts <- (plot_df$stored_counts / window_size) * 100
 
-### Figure S4a
+### 
 # pdf(file = "/home/jmitchel/figures/for_paper_v2/LN_antidsDNA_link2.pdf", useDingbats = FALSE,
 #     width = 4, height = 3.25)
 ggplot(plot_df,aes(x=dscores,y=stored_counts)) +
@@ -800,7 +801,7 @@ pbmc_container <- run_gsea_one_factor(pbmc_container, factor_select=1, method="f
 #   sim_hmap_res <- ht_clusters(mat, cl, word_cloud_grob_param = list(max_width = 70),
 #   exclude_words=exclude_words, fontsize_range = c(10, 15))
 
-### Figure S3b
+###
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/F1_gsea_summary.pdf", useDingbats = FALSE,
 #     width = 17, height = 10)
 plot_gsea_hmap_w_similarity(pbmc_container,factor_select=1,direc='up',thresh=.05,
@@ -1092,7 +1093,7 @@ tmp2 <- as.data.frame(scale(tmp))
 lmres <- summary(lm(Th~dsc,data=tmp2))
 print(lmres)
 
-### Figure S3d
+### Figure S3b
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/F1_Th_props.pdf", useDingbats = FALSE,
 #     width = 4, height = 3)
 p
@@ -1115,7 +1116,7 @@ dotplot <- get_subclust_enr_dotplot(pbmc_container,ctype='Th',res=.5,subtype=1,f
 dotplot <- dotplot + ylim(0,.3) + ylab('Proportion Treg/Th') + 
   theme(plot.title = element_blank())
 
-### Figure S3e
+### Figure S3c
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/F1_T4reg_props.pdf", useDingbats = FALSE,
 #     width = 4, height = 3)
 dotplot
@@ -1405,7 +1406,7 @@ all_res=c(.8)
 pbmc_container <- get_subclust_umap(pbmc_container,all_ctypes=all_ctypes,
                                     all_res=all_res,n_col=1)
 
-### Figure S4h
+### 
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/B_subc_umap.pdf", useDingbats = FALSE,
 #     width = 4, height = 3)
 pbmc_container[["plots"]][["subc_umaps"]][["B:0.8"]] +   
@@ -1426,7 +1427,7 @@ dotplot <- get_subclust_enr_dotplot(pbmc_container,ctype='B',res=.8,subtype=4,fa
 dotplot <- dotplot + ylim(0,.75) + ylab('Proportion Bact/B') + 
   theme(plot.title = element_blank())
 
-### Figure S4g
+### Figure S4f
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/F2_bact_props.pdf", useDingbats = FALSE,
 #     width = 4, height = 3)
 dotplot

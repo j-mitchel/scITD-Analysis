@@ -464,6 +464,7 @@ p <- ggplot(tmp,aes(x=method,y=count)) +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5))
 
+### Figure S3j
 pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/de_f1_IFN_overlap.pdf", useDingbats = FALSE,
     width = 4, height = 3)
 p
@@ -550,6 +551,7 @@ hmap_de <- Heatmap(de_cormat2,name = "pearson r",
                    column_title_gp = gpar(fontsize = 14),
                    use_raster = TRUE)
 
+## Figure S3g
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/DE_hmap_gset3.pdf", useDingbats = FALSE,
 #     width = 7, height = 4)
 hmap_de
@@ -631,7 +633,7 @@ scITD_hmap <- Heatmap(scITD_cormat,name = "pearson r",
 
 
 
-
+## Figure S3h
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/F1_cor_hmap_gset3.pdf", useDingbats = FALSE,
 #     width = 6, height = 4)
 scITD_hmap
@@ -659,6 +661,7 @@ p <- ggplot(tmp, aes(x=pearson_r, color=method)) +
   geom_histogram(fill="white", position="dodge",bins = 100) +
   theme_classic()
 
+## Figure S3i
 pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/pairwise_cor_de_f1.pdf", useDingbats = FALSE,
     width = 5, height = 4)
 p
@@ -937,6 +940,7 @@ p <- ggplot(tmp,aes(x=f3_padj,y=de_padj,color=gr_gset,label=glab)) +
   ylab('Prednisone DE -log10(padj)') +
   theme_bw()
   
+## Figure S5f
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/pred_de_vs_f3_pvals.pdf", useDingbats = FALSE,
 #     width = 6, height = 4)
 p
@@ -993,6 +997,7 @@ hmap_expr <- Heatmap(pb,name = "expression",
                    column_title = 'Hormone response gene expression',
                    column_title_gp = gpar(fontsize = 14))
 
+## Figure S5h
 pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/pred_hormone_expr3.pdf", useDingbats = FALSE,
     width = 5.5, height = 3.5)
 hmap_expr
@@ -1015,6 +1020,7 @@ p <- ggplot(melted_pb,aes(x=gene,y=expression,color=pred)) +
   geom_beeswarm(dodge.width=.75,cex=2,corral = 'wrap',corral.width = .35) +
   theme_bw()
 
+## Figure S5g
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/pred_group_expr.pdf", useDingbats = FALSE,
 #     width = 7, height = 4)
 p
@@ -1390,6 +1396,7 @@ p1 <- ggplot(tmp,aes(x=aSLE,y=pSLE)) +
   theme(plot.title = element_text(hjust = 0.5))
 p1
 
+## Figure S3k
 pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/DE_cross_dataset_SLEDAI.pdf", useDingbats = FALSE,
     width = 4, height = 2.75)
 p1
@@ -1410,6 +1417,7 @@ p2 <- ggplot(tmp,aes(x=aSLE,y=pSLE)) +
   theme(plot.title = element_text(hjust = 0.5))
 p2
 
+## Figure S3l
 pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/DE_cross_dataset_neph.pdf", useDingbats = FALSE,
     width = 4, height = 2.75)
 p2
@@ -1430,6 +1438,7 @@ p3 <- ggplot(tmp,aes(x=aSLE,y=pSLE)) +
   theme(plot.title = element_text(hjust = 0.5))
 p3
 
+## Figure S3m
 pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/DE_cross_dataset_pred.pdf", useDingbats = FALSE,
     width = 4, height = 2.75)
 p3
@@ -1522,16 +1531,19 @@ f3_plot <- plot_z(aSLE_res3,pSLE_res3,3)
 lmres6 <- f3_plot[[2]]
 f3_plot <- f3_plot[[1]]
 
+## Figure S3k
 pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/scITD_cross_dataset_f1.pdf", useDingbats = FALSE,
     width = 4, height = 2.75)
 f1_plot
 dev.off()
 
+## Figure S3l
 pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/scITD_cross_dataset_f2.pdf", useDingbats = FALSE,
     width = 4, height = 2.75)
 f2_plot
 dev.off()
 
+## Figure S3m
 pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/scITD_cross_dataset_f3.pdf", useDingbats = FALSE,
     width = 4, height = 2.75)
 f3_plot
@@ -1549,8 +1561,8 @@ lmres5 # rsq 0.2973
 lmres6 # rsq 0.2306
 
 
-f3_plot +
-  geom_point_rast(alpha=.8,size=.5,pch=21, colour='black')
+# f3_plot +
+#   geom_point_rast(alpha=.8,size=.5,pch=21, colour='black')
 
 
 

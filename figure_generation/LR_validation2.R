@@ -87,6 +87,7 @@ pbmc_container <- plot_donor_matrix(pbmc_container,
 pbmc_container$plots$donor_matrix
 
 
+pbmc_container <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_container_w_decomp.rds')
 
 # function to get nichenet results for a factor
 ligand_target_matrix = readRDS(url("https://zenodo.org/record/3260758/files/ligand_target_matrix.rds"))
@@ -918,7 +919,7 @@ lr_hmap
 # saveRDS(pbmc_container$lr_res,file='/home/jmitchel/data/lupus_data/C2C_scITD_lr_res.rds')
 pbmc_container$lr_res <- readRDS(file='/home/jmitchel/data/lupus_data/C2C_scITD_lr_res.rds')
 
-### loadings cell2cell results
+### loading cell2cell results
 lr_ldngs <- read.csv('/home/jmitchel/data/lupus_data/tensor_c2c_lr_lds.csv',row.names = 1)
 sample_ldngs <- read.csv('/home/jmitchel/data/lupus_data/tensor_c2c_donor_lds.csv',row.names = 1)
 sender_ldngs <- read.csv('/home/jmitchel/data/lupus_data/tensor_c2c_ct_send_lds.csv',row.names = 1)
@@ -1058,14 +1059,19 @@ nnet_rand_sd <- sd(rj_all_nnet)
 c2c_rand_mean <- mean(rj_all_c2c)
 c2c_rand_sd <- sd(rj_all_c2c)
 
+scTensor_res <- readRDS(file='/home/jmitchel/data/lupus_data/scTensor_stats.rds')
+scT_rand_mean <- scTensor_res[1]
+scT_rand_sd <- scTensor_res[2]
+jacc_scT <- scTensor_res[3]
+
 ## columns are jaccard, sd, method
-tmp <- cbind.data.frame(c(jacc_nnet, nnet_rand_mean, jacc_c2c, c2c_rand_mean),
-                        c(NA, nnet_rand_sd, NA, c2c_rand_sd),
-                        c('NicheNet','NicheNet','C2C','C2C'),
-                        c('real','random','real','random'))
+tmp <- cbind.data.frame(c(jacc_nnet, nnet_rand_mean, jacc_c2c, c2c_rand_mean, jacc_scT, scT_rand_mean),
+                        c(NA, nnet_rand_sd, NA, c2c_rand_sd, NA, scT_rand_sd),
+                        c('NicheNet','NicheNet','C2C','C2C','scTensor','scTensor'),
+                        c('real','random','real','random','real','random'))
 colnames(tmp) <- c('jaccard','std','method','type')
 tmp$type <- factor(tmp$type,levels=c('real','random'))
-tmp$method <- factor(tmp$method,levels=c('NicheNet','C2C'))
+tmp$method <- factor(tmp$method,levels=c('NicheNet','C2C','scTensor'))
 p <- ggplot(tmp,aes(x=method,y=jaccard,fill=type)) +
   geom_bar(stat="identity", color="black", 
            position=position_dodge()) +
@@ -1075,11 +1081,12 @@ p <- ggplot(tmp,aes(x=method,y=jaccard,fill=type)) +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5))
 
-# pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/scitd_nnet_c2c_jaccard_.pdf", useDingbats = FALSE,
-#     width = 4.5, height = 2.5)
+pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/scitd_nnet_c2c_jaccard2.pdf", useDingbats = FALSE,
+    width = 4.5, height = 2.5)
 p
-# dev.off()
+dev.off()
 
+# saveRDS(tmp,file='/home/jmitchel/data/lupus_data/lr_comparison_stats_for_plot.rds')
 
 
 

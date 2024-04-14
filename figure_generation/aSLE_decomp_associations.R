@@ -364,7 +364,108 @@ res_add[2,] <- c_pv[ndx_reorder]
 
 
 
-# co-occurrance of LN and dsdna with factor 2
+
+
+### calculating nephritis association using an interaction test with F1
+# including prednisone variable as covariate
+clin_vars2 <- read_excel('/home/jmitchel/data/lupus_data/SLE_meds_cleaned.xlsx')
+clin_vars2 <- as.data.frame(clin_vars2)
+rownames(clin_vars2) <- clin_vars2[,'Sample ID']
+clin_vars2[,'Sample ID'] <- NULL
+# make all NA into zeros, since no 0 are put in the table
+clin_vars2[is.na(clin_vars2)] <- 0
+
+tmp <- as.data.frame(cbind(dsc[,1],dsc[,2],clin_vars2[rownames(dsc),'pred_dose'],clin_vars[,'crflupusneph'],clin_vars[,'acrantidsdna'],dmeta[rownames(dsc),c('sex','Ethnicity','Age')]))
+tmp <- tmp[order(tmp[,1],decreasing=TRUE),]
+colnames(tmp)[1:5] <-  c('dscore1','dscore2','pred','ln','dsdna')
+
+tmp$ln <- as.factor(tmp$ln)
+tmp$dsdna <- as.factor(tmp$dsdna)
+
+# logistic regression model
+nmod <- glm(ln~dscore1+dscore2+pred+Ethnicity, data=tmp, family = 'binomial') ##"null" mod
+fmod <- glm(ln~dscore1+dscore2+pred+Ethnicity+dscore2*dscore1, data=tmp, family = "binomial") ##"full" mod
+
+a_res <- anova(nmod, fmod, test = 'Chisq')
+pval <- a_res$`Pr(>Chi)`[2]
+pval
+res_add[3,2] <- pval
+
+
+# plotting the interaction effect
+tmp$ln <- factor(tmp$ln,levels=c(1,0))
+levels(tmp$ln) <- c('Nephritis','No nephritis')
+
+f1_thresh <- 0
+tmp1 <- tmp[tmp$dscore1>f1_thresh,]
+tmp2 <- tmp[tmp$dscore1<f1_thresh,]
+tmp1 <- tmp1[tmp1$pred>0,]
+tmp2 <- tmp2[tmp2$pred>0,]
+
+p1 <- ggplot(tmp1,aes(x=ln,y=dscore2)) +
+  geom_violin() +
+  geom_dotplot(binaxis='y', stackdir='center', dotsize=1.25, binwidth = .01) +
+  xlab('') +
+  ylab('aSLE_F2 Scores') +
+  coord_flip() +
+  theme_bw() +
+  ggtitle('Donors with high aSLE_F1 scores') +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ylim(-.28,.28)
+p1
+
+p2 <- ggplot(tmp2,aes(x=ln,y=dscore2)) +
+  geom_violin() +
+  geom_dotplot(binaxis='y', stackdir='center', dotsize=1.25, binwidth = .01) +
+  xlab('') +
+  ylab('aSLE_F2 Scores') +
+  coord_flip() +
+  theme_bw() +
+  ggtitle('Donors with low aSLE_F1 scores') +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ylim(-.28,.28)
+p2
+
+tmp1 <- tmp[tmp$dscore1>f1_thresh,]
+tmp2 <- tmp[tmp$dscore1<f1_thresh,]
+tmp1 <- tmp1[tmp1$pred==0,]
+tmp2 <- tmp2[tmp2$pred==0,]
+
+p3 <- ggplot(tmp1,aes(x=ln,y=dscore2)) +
+  geom_violin() +
+  geom_dotplot(binaxis='y', stackdir='center', dotsize=1.25, binwidth = .01) +
+  xlab('') +
+  ylab('aSLE_F2 Scores') +
+  coord_flip() +
+  theme_bw() +
+  ggtitle('Donors with high aSLE_F1 scores') +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ylim(-.28,.28)
+p3
+
+p4 <- ggplot(tmp2,aes(x=ln,y=dscore2)) +
+  geom_violin() +
+  geom_dotplot(binaxis='y', stackdir='center', dotsize=1.25, binwidth = .01) +
+  xlab('') +
+  ylab('aSLE_F2 Scores') +
+  coord_flip() +
+  theme_bw() +
+  ggtitle('Donors with low aSLE_F1 scores') +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ylim(-.28,.28)
+p4
+
+fig <- cowplot::plot_grid(p1,p2,p3,p4,nrow=2,ncol=2,align = 'hv')
+fig
+
+pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/sle_f2_nephritis_interaction.pdf", useDingbats = FALSE,
+    width = 8, height = 4)
+fig
+dev.off()
+
+
+
+# co-occurrance of LN and dsdna with factor 2 with window test
 old_dsc <- dsc
 tmp <- as.data.frame(cbind(dsc[,2],clin_vars[,'crflupusneph'],clin_vars[,'acrantidsdna']))
 tmp <- tmp[order(tmp[,1],decreasing=TRUE),]
@@ -432,7 +533,13 @@ print(pval)
 dsc <- old_dsc
 
 
-res_add[3,2] <- pval
+# res_add[3,2] <- pval
+
+
+
+
+
+
 
 
 
@@ -656,7 +763,7 @@ pbmc_container <- plot_donor_matrix(pbmc_container,
                                     meta_vars=c('sex'))
 
 ### Figure 2b
-# pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/sle_only_dscores.pdf", useDingbats = FALSE,
+# pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/sle_only_dscores2.pdf", useDingbats = FALSE,
 #     width = 4, height = 4)
 pbmc_container$plots$donor_matrix
 # dev.off()

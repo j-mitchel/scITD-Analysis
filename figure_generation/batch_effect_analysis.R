@@ -74,6 +74,7 @@ pbmc_container$tucker_results[[1]][,1] <- pbmc_container$tucker_results[[1]][,1]
 pbmc_container$tucker_results[[2]][1,] <- pbmc_container$tucker_results[[2]][1,] * -1
 pbmc_container$projection_data[[1]][1,] <- pbmc_container$projection_data[[1]][1,] * -1
 
+pbmc_container <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_container_w_decomp.rds')
 
 
 
@@ -107,8 +108,15 @@ pbmc_container_uncorrected <- form_tensor(pbmc_container_uncorrected, donor_min_
                               vargenes_method='norm_var_pvals', vargenes_thresh=.15,
                               scale_var = TRUE, var_scale_power = .5)
 
-pbmc_container_uncorrected <- run_tucker_ica(pbmc_container_uncorrected, ranks=c(7,20),
-                                 tucker_type = 'regular', rotation_type = 'hybrid')
+# pbmc_container_uncorrected <- run_tucker_ica(pbmc_container_uncorrected, ranks=c(7,20),
+#                                  tucker_type = 'regular', rotation_type = 'hybrid')
+
+# pbmc_container_uncorrected <- run_tucker_ica(pbmc_container_uncorrected, ranks=c(12,36),
+#                                              tucker_type = 'regular', rotation_type = 'hybrid')
+
+pbmc_container_uncorrected <- run_tucker_ica(pbmc_container_uncorrected, ranks=c(13,40),
+                                             tucker_type = 'regular', rotation_type = 'hybrid')
+
 
 ### plot donor scores
 pbmc_container_uncorrected <- get_meta_associations(pbmc_container_uncorrected,vars_test=c('sex','Age','pool','processing','Ethnicity'),
@@ -124,7 +132,7 @@ pbmc_container_uncorrected <- plot_donor_matrix(pbmc_container_uncorrected,
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/batch_dscores.pdf", useDingbats = FALSE,
 #     width = 7, height = 6)
 pbmc_container_uncorrected$plots$donor_matrix
-dev.off()
+# dev.off()
 
 
 
@@ -370,8 +378,8 @@ pbmc_container_uncorrected <- plot_donor_matrix(pbmc_container_uncorrected,
                                     meta_vars=c('pool'),
                                     cluster_by_meta='pool')
 
-# pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/uncorrected_dscores.pdf", useDingbats = FALSE,
-#     width = 6.5, height = 6)
+pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/uncorrected_dscores2.pdf", useDingbats = FALSE,
+    width = 7.5, height = 6)
 pbmc_container_uncorrected$plots$donor_matrix
 dev.off()
 
@@ -408,8 +416,8 @@ hmap <- Heatmap(cormat,name = "pearson r",
                 })
 
 
-# pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/corrected_vs_uncorrected_dscores.pdf", useDingbats = FALSE,
-#     width = 4.5, height = 3.5)
+pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/corrected_vs_uncorrected_dscores2.pdf", useDingbats = FALSE,
+    width = 7, height = 4)
 hmap
 dev.off()
 

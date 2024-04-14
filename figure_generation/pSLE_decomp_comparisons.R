@@ -195,7 +195,7 @@ pbmc_container_SLE$projection_data[[1]][1,] <- pbmc_container_SLE$projection_dat
 # project all original factors onto the pediatric dataset
 pbmc_container <- project_new_data(pbmc_container,pbmc_container_SLE)
 
-pbmc_container <- get_donor_meta(pbmc_container, additional_meta = meta_cols)
+pbmc_container <- get_donor_meta(pbmc_container, additional_meta = c(meta_cols,'Ethnicity'))
 
 
 colnames(pbmc_container$donor_metadata)
@@ -274,6 +274,59 @@ print(p5_adj)
 p1_adj <- p1 * length(factors_test) / 1 # 1st smallest nominal pval
 print(p1_adj)
 # all are monotonically decreasing
+
+
+#### looking at nephritis association for f2 with interaction with f1
+# mv <- 'Neph_all'
+# mv <- 'CREATININE'
+tmp <- cbind.data.frame(pbmc_container$projected_scores[rownames(pbmc_container$donor_metadata),c(1,2)],pbmc_container$donor_metadata[,c('Neph_all','OS','Ethnicity')])
+colnames(tmp)[1:2] <- c('dscore1','dscore2')
+# since we're including healthy here, assign values of 0 to neph_all and OS
+tmp$Neph_all[is.na(tmp$Neph_all)] <- 0
+tmp$OS[is.na(tmp$OS)] <- 0
+# # removing healthy donors
+# tmp <- tmp[!is.na(tmp$Neph_all),]
+
+tmp$Neph_all <- as.factor(tmp$Neph_all)
+tmp$OS <- as.factor(tmp$OS)
+tmp$Ethnicity <- as.factor(tmp$Ethnicity)
+
+# logistic regression model
+nmod <- glm(Neph_all~dscore1+dscore2+OS+Ethnicity, data=tmp, family = 'binomial') ##"null" mod
+fmod <- glm(Neph_all~dscore1+dscore2+OS+Ethnicity+dscore2*dscore1, data=tmp, family = "binomial") ##"full" mod
+
+# # logistic regression model
+# nmod <- glm(Neph_all~1, data=tmp, family = 'binomial') ##"null" mod
+# fmod <- glm(Neph_all~dscore2*dscore1, data=tmp, family = "binomial") ##"full" mod
+
+a_res <- anova(nmod, fmod, test = 'Chisq')
+pval <- a_res$`Pr(>Chi)`[2]
+pval
+
+
+tmp <- cbind.data.frame(pbmc_container$projected_scores[rownames(pbmc_container$donor_metadata),c(1,2)],pbmc_container$donor_metadata[,c('CREATININE','OS','Ethnicity')])
+colnames(tmp)[1:3] <- c('dscore1','dscore2','Neph_all')
+# since we're including healthy here, assign values of 0 to neph_all and OS
+tmp$Neph_all[is.na(tmp$Neph_all)] <- 0
+tmp$OS[is.na(tmp$OS)] <- 0
+# # removing healthy donors
+# tmp <- tmp[!is.na(tmp$Neph_all),]
+
+tmp$OS <- as.factor(tmp$OS)
+tmp$Ethnicity <- as.factor(tmp$Ethnicity)
+
+# logistic regression model
+nmod <- lm(Neph_all~dscore1+dscore2+OS+Ethnicity, data=tmp) ##"null" mod
+fmod <- lm(Neph_all~dscore1+dscore2+OS+Ethnicity+dscore2*dscore1, data=tmp) ##"full" mod
+
+# # logistic regression model
+# nmod <- glm(Neph_all~1, data=tmp, family = 'binomial') ##"null" mod
+# fmod <- glm(Neph_all~dscore2*dscore1, data=tmp, family = "binomial") ##"full" mod
+
+a_res <- anova(nmod, fmod, test = 'Chisq')
+pval <- a_res$`Pr(>Chi)`[2]
+pval
+
 
 
 ############### for the above, need to recompute association statistic just for naive Th cells ########

@@ -108,11 +108,6 @@ pbmc_container_uncorrected <- form_tensor(pbmc_container_uncorrected, donor_min_
                               vargenes_method='norm_var_pvals', vargenes_thresh=.15,
                               scale_var = TRUE, var_scale_power = .5)
 
-# pbmc_container_uncorrected <- run_tucker_ica(pbmc_container_uncorrected, ranks=c(7,20),
-#                                  tucker_type = 'regular', rotation_type = 'hybrid')
-
-# pbmc_container_uncorrected <- run_tucker_ica(pbmc_container_uncorrected, ranks=c(12,36),
-#                                              tucker_type = 'regular', rotation_type = 'hybrid')
 
 pbmc_container_uncorrected <- run_tucker_ica(pbmc_container_uncorrected, ranks=c(13,40),
                                              tucker_type = 'regular', rotation_type = 'hybrid')

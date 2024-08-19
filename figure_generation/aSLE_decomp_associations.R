@@ -367,6 +367,9 @@ res_add[2,] <- c_pv[ndx_reorder]
 
 
 ### calculating nephritis association using an interaction test with F1
+pbmc_container <- get_donor_meta(pbmc_container,additional_meta = c('sex','Ethnicity','Age'))
+dmeta <- pbmc_container[["donor_metadata"]]
+
 # including prednisone variable as covariate
 clin_vars2 <- read_excel('/home/jmitchel/data/lupus_data/SLE_meds_cleaned.xlsx')
 clin_vars2 <- as.data.frame(clin_vars2)
@@ -780,6 +783,140 @@ pbmc_container$plots$donor_matrix
 
 
 
+
+
+
+plot_select_sets2 <- function(container, factors_all, sets_plot, color_sets=NULL, cl_rows=FALSE,
+                             h_w=NULL, myfontsize=8) {
+  for (factor_select in factors_all) {
+    factor_name <- paste0('Factor',as.character(factor_select))
+    
+    
+    gsea_res <- container[["gsea_res_full"]][[factor_name]]
+    
+    res <- data.frame(matrix(1,ncol=length(gsea_res),nrow = length(sets_plot)))
+    colnames(res) <- names(gsea_res)
+    rownames(res) <- sets_plot
+    
+    res_raw <- res
+    
+    # populate res with pvalues
+    for (i in 1:length(sets_plot)) {
+      myset <- sets_plot[i]
+      for (j in 1:length(gsea_res)) {
+        ct <- names(gsea_res)[j]
+        myres <- gsea_res[[j]]
+        if (myset %in% myres$pathway) {
+          # see if NES is negative
+          is_neg <- myres$NES[myres$pathway==myset] < 0
+          if (is_neg) {
+            res[myset,ct] <- log10(myres$padj[myres$pathway==myset])
+            res_raw[myset,ct] <- myres$padj[myres$pathway==myset]
+          } else {
+            res[myset,ct] <- -log10(myres$padj[myres$pathway==myset])
+            res_raw[myset,ct] <- myres$padj[myres$pathway==myset]
+          }
+        }
+      }
+    }
+    
+    print(res_raw)
+    nrn <- rownames(res)
+    # make set names multi line if too long!
+    for (j in 1:length(nrn)) {
+      nm <- nrn[j]
+      max_char <- nchar(nm)
+      if (nchar(nm) > 40) {
+        # cut at underscore
+        u_loc <- stringr::str_locate_all(pattern ='_', nm)[[1]]
+        ndx_chop <- max(u_loc[,'start'][u_loc[,'start'] < 40])
+        nrn[j] <- paste0(substr(nm,1,ndx_chop),'\n',substr(nm,ndx_chop+1,max_char))
+      }
+    }
+    rownames(res) <- nrn
+    
+    # order columns the same as corresponding loadings plot
+    col_ordering <- colnames(container[["plots"]][["lds_plots_data"]][[as.character(factor_select)]])
+    res <- res[,col_ordering]
+    
+    # cluster rows if specified
+    if (cl_rows) {
+      clust_ord <- hclust(dist(res), method = "single")$order
+      res <- res[clust_ord,]
+      color_sets <- color_sets[clust_ord]
+    }
+    
+    # col_fun = colorRamp2(c(-1*max(abs(res)), 0, max(abs(res))), c("blue", "white", "red"))
+    # 
+    # myhmap <- Heatmap(as.matrix(res), name = 'signed -log10(padj)',
+    #                   cluster_rows = FALSE,
+    #                   cluster_columns = FALSE,
+    #                   show_row_dend = FALSE, show_column_dend = FALSE,
+    #                   column_names_gp = gpar(fontsize = 12),
+    #                   col = col_fun,
+    #                   heatmap_legend_param = list(
+    #                     legend_direction = "horizontal", 
+    #                     legend_width = unit(2.25, "cm")
+    #                   ),
+    #                   row_title_gp = gpar(fontsize = 12),
+    #                   column_title = 'Cell Types',
+    #                   column_title_side = "bottom",
+    #                   column_title_gp = gpar(fontsize = 12, fontface = "bold"),
+    #                   row_title = 'Gene Sets',
+    #                   row_title_side = "left",
+    #                   border=TRUE,
+    #                   row_names_side = "right",
+    #                   row_names_gp = gpar(fontsize = myfontsize, col = color_sets),
+    #                   width = unit(h_w[2], "cm"),
+    #                   height = unit(h_w[1], "cm"),
+    #                   cell_fun = function(j, i, x, y, w, h, col) { # add text to each grid
+    #                     if (abs(res[i,j]) > -log10(.001)) {
+    #                       grid.text('***', x, y, gp = gpar(fontface='bold'))
+    #                     } else if (abs(res[i,j]) > -log10(.01)) {
+    #                       grid.text('**', x, y, gp = gpar(fontface='bold'))
+    #                     } else if (abs(res[i,j]) > -log10(.05)) {
+    #                       grid.text('*', x, y, gp = gpar(fontface='bold'))
+    #                     } else {
+    #                       grid.text('', x, y)
+    #                     }
+    #                   })
+    
+    col_fun = colorRamp2(c(-1*max(abs(res)), log10(.05),-log10(.05), max(abs(res))), c("blue", "white", "white", "red"))
+    
+    myhmap <- Heatmap(as.matrix(res), name = 'signed -log10(padj)',
+                      cluster_rows = FALSE,
+                      cluster_columns = FALSE,
+                      show_row_dend = FALSE, show_column_dend = FALSE,
+                      column_names_gp = gpar(fontsize = 12),
+                      col = col_fun,
+                      heatmap_legend_param = list(
+                        legend_direction = "horizontal", 
+                        legend_width = unit(2.25, "cm")
+                      ),
+                      row_title_gp = gpar(fontsize = 12),
+                      column_title = 'Cell Types',
+                      column_title_side = "bottom",
+                      column_title_gp = gpar(fontsize = 12, fontface = "bold"),
+                      row_title = 'Gene Sets',
+                      row_title_side = "left",
+                      border=TRUE,
+                      row_names_side = "right",
+                      row_names_gp = gpar(fontsize = myfontsize, col = color_sets),
+                      width = unit(h_w[2], "cm"),
+                      height = unit(h_w[1], "cm"))
+    
+  }
+  return(myhmap)
+}
+
+
+
+
+
+
+
+
+
 # get significant genes
 pbmc_container <- get_lm_pvals(pbmc_container)
 
@@ -797,9 +934,8 @@ pbmc_container <- get_all_lds_factor_plots(pbmc_container, use_sig_only=TRUE,
 pbmc_container <- run_gsea_one_factor(pbmc_container, factor_select=1, method="fgsea", thresh=0.05,
                                       db_use=c("GO"))
 
-### for hmap below I temporarily changed these parameters in run_gsea scITD code to alter the size
-#   sim_hmap_res <- ht_clusters(mat, cl, word_cloud_grob_param = list(max_width = 70),
-#   exclude_words=exclude_words, fontsize_range = c(10, 15))
+# saveRDS(list(pbmc_container$gsea_res_full,pbmc_container$gsea_results),file='/home/jmitchel/data/lupus_data/aSLE_F1_GSEA.rds')
+
 
 ###
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/F1_gsea_summary.pdf", useDingbats = FALSE,
@@ -812,22 +948,6 @@ plot_gsea_hmap_w_similarity(pbmc_container,factor_select=1,direc='up',thresh=.05
 plot_gsea_sub(pbmc_container,thresh=.05,clust_select=3)
 
 ## f1 sets to show on loading hmap
-# gsets <- c("GOBP_RESPONSE_TO_TYPE_I_INTERFERON",
-#            "GOBP_RESPONSE_TO_INTERFERON_GAMMA",
-#            "GOBP_PROTEOLYSIS",
-#            "GOBP_TUMOR_NECROSIS_FACTOR_MEDIATED_SIGNALING_PATHWAY",
-#            "GOBP_INTERLEUKIN_1_PRODUCTION",
-#            "GOBP_TUMOR_NECROSIS_FACTOR_SUPERFAMILY_CYTOKINE_PRODUCTION",
-#            "GOBP_MYELOID_LEUKOCYTE_ACTIVATION",
-#            "GOBP_INTERLEUKIN_6_PRODUCTION",
-#            "GOBP_APOPTOTIC_CELL_CLEARANCE",
-#            "GOBP_REGULATION_OF_LEUKOCYTE_PROLIFERATION",
-#            "GOBP_APOPTOTIC_SIGNALING_PATHWAY",
-#            "GOBP_REGULATION_OF_CELL_CYCLE",
-#            "GOBP_NEGATIVE_REGULATION_OF_GROWTH",
-#            "GOBP_VESICLE_BUDDING_FROM_MEMBRANE",
-#            "GOBP_REGULATION_OF_NIK_NF_KAPPAB_SIGNALING")
-
 gsets <- c("GOBP_RESPONSE_TO_TYPE_I_INTERFERON",
            "GOBP_MYELOID_LEUKOCYTE_ACTIVATION",
            "GOBP_REGULATION_OF_NIK_NF_KAPPAB_SIGNALING")
@@ -863,6 +983,14 @@ pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/sle_f1_sel_gsets.pdf", u
 hm_list
 dev.off()
 
+hm_list <- plot_select_sets2(pbmc_container, 1, gsets, color_sets=gset_cmap, 
+                             cl_rows=F, myfontsize=6.5, h_w=c(2,6.5))
+
+pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/sle_f1_sel_gsets2.pdf", useDingbats = FALSE,
+    width = 10, height = 3)
+draw(hm_list, heatmap_legend_side = "bottom")
+dev.off()
+
 ### Figure 2d
 ## plotting just specific genes h_w=c(9,6.5) original
 # pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/sle_only_f1_lds_v2.pdf", useDingbats = FALSE,
@@ -881,6 +1009,8 @@ pbmc_container <- plot_loadings_annot(pbmc_container, factor_select=1, use_sig_o
 
 pbmc_container <- run_gsea_one_factor(pbmc_container, factor_select=2, method="fgsea", thresh=0.05,
                                       db_use=c("GO"))
+
+# saveRDS(list(pbmc_container$gsea_res_full,pbmc_container$gsea_results),file='/home/jmitchel/data/lupus_data/aSLE_F1_F2_GSEA.rds')
 
 gsets <- c('GOBP_CELL_CYCLE',
            'GOBP_CELL_MIGRATION',
@@ -910,11 +1040,19 @@ pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/sle_f2_sel_gsets.pdf", u
 hm_list
 dev.off()
 
+hm_list <- plot_select_sets2(pbmc_container, 2, gsets, color_sets=gset_cmap, 
+                             cl_rows=F, myfontsize=6.5, h_w=c(2,6.5))
 
+pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/sle_f2_sel_gsets2.pdf", useDingbats = FALSE,
+    width = 10, height = 3)
+draw(hm_list, heatmap_legend_side = "bottom")
+dev.off()
 
 
 pbmc_container <- run_gsea_one_factor(pbmc_container, factor_select=3, method="fgsea", thresh=0.05,
                                       db_use=c("GO"))
+
+# saveRDS(list(pbmc_container$gsea_res_full,pbmc_container$gsea_results),file='/home/jmitchel/data/lupus_data/aSLE_F1_F2_F3_GSEA.rds')
 
 gsets <- c('GOBP_RESPONSE_TO_HORMONE',
            'GOBP_POSITIVE_REGULATION_OF_CELL_DIFFERENTIATION',
@@ -943,6 +1081,9 @@ pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/sle_f3_sel_gsets.pdf", u
     width = 10, height = 3)
 hm_list
 dev.off()
+
+hm_list <- plot_select_sets2(pbmc_container, 3, gsets, color_sets=gset_cmap, 
+                             cl_rows=F, myfontsize=6.5, h_w=c(2,6.5))
 
 
 

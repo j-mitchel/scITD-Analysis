@@ -81,7 +81,8 @@ pbmc_container$tucker_results[[1]][,1] <- pbmc_container$tucker_results[[1]][,1]
 pbmc_container$tucker_results[[2]][1,] <- pbmc_container$tucker_results[[2]][1,] * -1
 pbmc_container$projection_data[[1]][1,] <- pbmc_container$projection_data[[1]][1,] * -1
 
-pbmc_container <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_container_w_decomp.rds')
+# # or load up the already generated object
+# pbmc_container <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_container_w_decomp.rds')
 
 
 #### recomputing tensor with all expressed genes, not just ones used in the tensor

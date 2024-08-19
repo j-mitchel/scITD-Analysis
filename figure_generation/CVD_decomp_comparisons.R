@@ -2,8 +2,11 @@ library(Seurat)
 library(cowplot)
 library(scITD)
 library(cacoa)
+library(circlize)
+library(ComplexHeatmap)
+library(ggplot2)
 
-# load up the lupus dataset: see preprocessing/lupus_preprocessing.R 
+# load up the lupus dataset: see preprocessing/lupus_preprocessing.R
 # for code used to generate this object
 pbmc_sle <- readRDS('/home/jmitchel/data/lupus_data/lupus_subsetted_seurat_v3.rds')
 
@@ -79,7 +82,8 @@ pbmc_container_SLE <- plot_donor_matrix(pbmc_container_SLE,
 
 pbmc_container_SLE$plots$donor_matrix
 
-
+# # or to read in the already generated object
+# pbmc_container_SLE <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_container_w_decomp.rds')
 
 
 
@@ -90,7 +94,7 @@ pbmc_container_SLE$plots$donor_matrix
 # for code used to generate this object
 pbmc_covid <- readRDS(file="/home/jmitchel/data/covid_data_uk/haniffa21_subset_no_lps.rds")
 
-# collapsing cell subtypes and converting cell type names 
+# collapsing cell subtypes and converting cell type names
 new_names <- sapply(as.character(pbmc_covid@meta.data$full_clustering), function(x){
   if (x=='B_exhausted' || x=='B_immature' || x=='B_naive' || x=='B_non-switched_memory' || x=='B_switched_memory') {
     return('B')
@@ -165,13 +169,13 @@ pbmc_container_covid <- make_new_container(count_data = pbmc_covid@assays$raw@co
                                                              'swab_result',
                                                              'time_after_LPS'))
 
-pbmc_container_covid <- form_tensor(pbmc_container_covid, donor_min_cells=2, 
+pbmc_container_covid <- form_tensor(pbmc_container_covid, donor_min_cells=2,
                                     norm_method='trim', scale_factor=10000,
                                     vargenes_method='norm_var_pvals', vargenes_thresh=.0001,
                                     batch_var = 'site',
-                                    scale_var = TRUE, var_scale_power = .5) 
+                                    scale_var = TRUE, var_scale_power = .5)
 
-pbmc_container_covid <- run_tucker_ica(pbmc_container_covid, ranks=c(9,38), 
+pbmc_container_covid <- run_tucker_ica(pbmc_container_covid, ranks=c(9,38),
                                        tucker_type = 'regular', rotation_type = 'hybrid') # best with vargenes_thresh=.0001 also .01
 
 # get factor-meta data associations
@@ -284,7 +288,7 @@ cor_hmap <- Heatmap(res_orig, name = "Pearson r",
                     show_row_names=TRUE,show_row_dend = FALSE,
                     show_column_dend = FALSE,
                     column_title_side = "bottom",
-                    row_names_side = "left",  
+                    row_names_side = "left",
                     bottom_annotation = ba,
                     cell_fun = function(j, i, x, y, width, height, fill) {
                       grid::grid.text(sprintf("%.2f", res_orig[i, j]), x, y, gp = gpar(fontsize = 10))
@@ -450,15 +454,15 @@ p
 #### getting loadings plots
 get_ct_specific_genes <- function(container,ct,factor_select,thresh=.05,signed=NULL) {
   ldngs <- get_one_factor(container,factor_select)[[2]]
-  
+
   sig_vectors <- get_significance_vectors(container,
                                           factor_select, colnames(ldngs))
   # convert list to df
   sig_df <- t(as.data.frame(do.call(rbind, sig_vectors)))
-  
+
   # order df same way as in ldngs
   sig_df <- sig_df[rownames(ldngs),colnames(ldngs)]
-  
+
   # loop through cell type columns and update mask vector for all genes
   gene_mask <- rep(TRUE,nrow(sig_df))
   for (i in 1:ncol(sig_df)) {
@@ -468,13 +472,13 @@ get_ct_specific_genes <- function(container,ct,factor_select,thresh=.05,signed=N
       gene_mask <- gene_mask & !(sig_df[,i] < thresh)
     }
   }
-  
+
   specific_genes <- names(gene_mask)[gene_mask]
-  
+
   # now shorten this list to get strongest
   top_genes <- ldngs[specific_genes,ct,drop=FALSE]
   top_genes <- rowMeans(top_genes)
-  
+
   if (is.null(signed)) {
     top_genes <- top_genes[order(abs(top_genes),decreasing = TRUE)]
   } else if (signed=='neg') {
@@ -484,7 +488,7 @@ get_ct_specific_genes <- function(container,ct,factor_select,thresh=.05,signed=N
     top_genes <- top_genes[order(top_genes,decreasing = TRUE)]
     top_genes <- top_genes[top_genes>0]
   }
-  
+
   return(top_genes)
 }
 
@@ -530,7 +534,7 @@ gset_sub <- names(gset_cmap_sub)
 
 pbmc_container_covid <- plot_loadings_annot(pbmc_container_covid, factor_select=2, use_sig_only=TRUE, nonsig_to_zero=TRUE, annot='none',
                                             pathways=NULL, sim_de_donor_group=NULL, sig_thresh=0.01, display_genes=FALSE,
-                                            gene_callouts=FALSE, callout_n_gene_per_ctype=5, callout_ctypes=NULL, 
+                                            gene_callouts=FALSE, callout_n_gene_per_ctype=5, callout_ctypes=NULL,
                                             le_set_callouts=gset_sub, le_set_colormap=gset_cmap_sub, le_set_num_per=10, show_le_legend=FALSE,
                                             show_xlab=TRUE, show_var_explained=TRUE, reset_other_factor_plots=FALSE, draw_plot=TRUE,
                                             clust_method='mcquitty', h_w=c(9,6.5))
@@ -663,7 +667,7 @@ get_betas <- function(container, all_f_test, donor_min_cells=2,
   container <- clean_data(container, donor_min_cells=donor_min_cells)
   container <- get_pseudobulk(container)
   container <- normalize_pseudobulk(container, method=norm_method, scale_factor=scale_factor)
-  
+
   # remove lowly expressed genes here
   for (ct in container$experiment_params$ctypes_use) {
     # select only genes expressed to some amount in at least 5% of donors
@@ -671,33 +675,33 @@ get_betas <- function(container, all_f_test, donor_min_cells=2,
     g_keep <- colSums(container$scMinimal_ctype[[ct]]$pseudobulk>0) > donor_thresh
     container$scMinimal_ctype[[ct]]$pseudobulk <- container$scMinimal_ctype[[ct]]$pseudobulk[,g_keep]
   }
-  
+
   container <- apply_combat(container,batch_var=batch_var)
-  
+
   # unit scale each gene in each cell type
   for (ct in container$experiment_params$ctypes_use) {
     container$scMinimal_ctype[[ct]]$pseudobulk <- scale(container$scMinimal_ctype[[ct]]$pseudobulk)
   }
-  
+
   # need to unit scale donor scores for each factor, so can compare betas
   container$tucker_results[[1]] <- scale(container$tucker_results[[1]])
-  
+
   ## now compute expression-dsc associations for all factors and all cell types
   total_res <- list() # stores the results for all factors
   total_res_pv <- list()
   for (f_test in all_f_test) {
     print(f_test)
     dsc <- container$tucker_results[[1]][,f_test,drop=FALSE]
-    
+
     f_res <- list() # stores the result from a single factor
-    f_res_pv <- list() 
-    
+    f_res_pv <- list()
+
     # loop through cell types
     for (ct in container$experiment_params$ctypes_use) {
       print(ct)
       ct_res <- c()
       ct_res_pv <- c()
-      
+
       pb <- container$scMinimal_ctype[[ct]]$pseudobulk
       # loop through genes
       for (g_ndx in 1:ncol(pb)) {
@@ -706,7 +710,7 @@ get_betas <- function(container, all_f_test, donor_min_cells=2,
         lmres <- summary(lm(expr~dscore,data=tmp))
         beta <- lmres$coefficients['dscore','Estimate']
         ct_res <- c(ct_res,beta)
-        
+
         pval <- stats::pf(lmres$fstatistic[1],lmres$fstatistic[2],lmres$fstatistic[3],lower.tail=FALSE)
         ct_res_pv <- c(ct_res_pv,pval)
       }
@@ -717,7 +721,7 @@ get_betas <- function(container, all_f_test, donor_min_cells=2,
     total_res[[f_test]] <- f_res
     total_res_pv[[f_test]] <- f_res_pv
   }
-  
+
   if (get_pvals) {
     return(list(total_res,total_res_pv))
   } else {
@@ -744,25 +748,25 @@ get_diff_gsea <- function(betas1,betas2,cao,f_use1,f_use2,plot=TRUE,plot_n=25) {
     betas1[[f_use1]][[ct]] <- betas1[[f_use1]][[ct]][gene_intersect]
     betas2[[f_use2]][[ct]] <- betas2[[f_use2]][[ct]][gene_intersect]
   }
-  
+
   # for each cell type take the difference across datasets
   betas_diff <- list()
   for (ct in names(betas1[[f_use1]])) {
     betas_diff[[ct]] <- betas1[[f_use1]][[ct]] - betas2[[f_use2]][[ct]]
   }
-  
+
   all_res <- lapply(1:length(betas_diff),function(x){
     ct <- names(betas_diff)[x]
     diff_vals <- betas_diff[[ct]]
     res <- as.data.frame(matrix(ncol=3,nrow=length(diff_vals)))
     colnames(res) <- c('padj','Z','Gene')
     res$Gene <- names(diff_vals)
-    
+
     # res$Z <- diff_vals
     # res$Z <- abs(diff_vals) # TESTING ONLY
     res$Z <- abs(diff_vals**2) # TESTING ONLY
     # res$Z <- abs(diff_vals**2.5) # TESTING ONLY
-    
+
     res$padj <- rep(1,length(diff_vals))
     # sort by absolute value score
     res <- res[order(abs(res$Z),decreasing = TRUE),]
@@ -771,18 +775,24 @@ get_diff_gsea <- function(betas1,betas2,cao,f_use1,f_use2,plot=TRUE,plot_n=25) {
     return(res_outer)
   })
   names(all_res) <- names(betas_diff)
-  
+
   cao[["test.results"]][["de"]] <- all_res
-  
+
   # cao$estimateOntology(type="GSEA", org.db=org.Hs.eg.db::org.Hs.eg.db, verbose=TRUE,
   #                      n.cores=5, ignore.cache=TRUE)
   cao$estimateOntology(type="GSEA", org.db=org.Hs.eg.db::org.Hs.eg.db, verbose=TRUE,
                        n.cores=5, ignore.cache=TRUE,
                        scoreType = "pos")
-  
-  # cao$estimateOntology(type="GO", org.db=org.Hs.eg.db::org.Hs.eg.db, verbose=TRUE,
-  #                      n.cores=5, ignore.cache=TRUE)
-  
+
+  for (ct in 1:length(cao[["test.results"]][["GSEA"]][["res"]])) {
+    for (dtype in c("BP", "CC", "MF")) {
+      ct_res <- cao[["test.results"]][["GSEA"]][["res"]][[ct]][[dtype]]@result
+      ndx_change <- which(colnames(ct_res)=='qvalue')
+      colnames(ct_res)[ndx_change] <- 'qvalues'
+      cao[["test.results"]][["GSEA"]][["res"]][[ct]][[dtype]]@result <- ct_res
+    }
+  }
+
   if (!plot) {
     return(cao)
   } else {
@@ -791,16 +801,16 @@ get_diff_gsea <- function(betas1,betas2,cao,f_use1,f_use2,plot=TRUE,plot_n=25) {
       name="GSEA", genes="up", n=plot_n, clust.method="ward.D", size.range=c(1, 4),
       exclude.words=ex_words, p.adj=.05, q.value=.2
     )
-    
+
     return(p)
   }
-  
+
 }
 
 
 # need some empty cacoa object, so this is arbitrary data that's not use except for its data structure
 cao <- cacoa::Cacoa$new(
-  NULL, sample.groups=as.factor(c('ctrl','test')), 
+  NULL, sample.groups=as.factor(c('ctrl','test')),
   cell.groups=as.factor(c('ct1','ct2')),
   sample.per.cell=as.factor(c('1','2')),
   target.level='test', ref.level='ctrl', n.cores=5, verbose=FALSE
@@ -900,34 +910,34 @@ sle_f_map <- c(1,2,5,3,4)
 for (i in 1:length(beta_vals_sle)) {
   betas_sle_f <- beta_vals_sle[[sle_f_map[i]]]
   betas_cvd_f <- beta_vals_cvd[[covid_f_map[i]]]
-  
+
   p_sle_f <- p_vals_sle[[sle_f_map[i]]]
   p_cvd_f <- p_vals_cvd[[covid_f_map[i]]]
-  
+
   # limit all to the cell types found in both
   betas_sle_f <- betas_sle_f[ctypes_all]
   betas_cvd_f <- betas_cvd_f[ctypes_all]
   p_sle_f <- p_sle_f[ctypes_all]
   p_cvd_f <- p_cvd_f[ctypes_all]
-  
-  
+
+
   # loop through cell types
   for (ct in names(betas_sle_f)) {
     betas_sle_f_ct <- betas_sle_f[[ct]]
     betas_cvd_f_ct <- betas_cvd_f[[ct]]
     p_sle_f_ct <- p_sle_f[[ct]]
     p_cvd_f_ct <- p_cvd_f[[ct]]
-    
+
     names(p_sle_f_ct) <- names(betas_sle_f_ct)
     names(p_cvd_f_ct) <- names(betas_cvd_f_ct)
-    
+
     # reduce genes to the intersection of genes tested in both
     g_both <- intersect(names(betas_sle_f_ct),names(betas_cvd_f_ct))
     betas_sle_f_ct <- betas_sle_f_ct[g_both]
     betas_cvd_f_ct <- betas_cvd_f_ct[g_both]
     p_sle_f_ct <- p_sle_f_ct[g_both]
     p_cvd_f_ct <- p_cvd_f_ct[g_both]
-    
+
     # get union of significant genes
     g_keep1 <- names(p_sle_f_ct)[p_sle_f_ct<.01]
     g_keep2 <- names(p_cvd_f_ct)[p_cvd_f_ct<.01]
@@ -935,13 +945,13 @@ for (i in 1:length(beta_vals_sle)) {
     # print(i)
     # print(ct)
     # print(length(g_keep))
-    
+
     if (length(g_keep)<10) {
       cor_res[i,ct] <- NA
     } else {
       betas_sle_f_ct <- betas_sle_f_ct[g_keep]
       betas_cvd_f_ct <- betas_cvd_f_ct[g_keep]
-      
+
       mycor <- cor(betas_sle_f_ct,betas_cvd_f_ct)
       cor_res[i,ct] <- mycor
     }
@@ -1320,7 +1330,7 @@ counts <- counts[,cells_keep]
 pbmc_container_SLE[["scMinimal_full"]][["metadata"]] <- meta
 pbmc_container_SLE[["scMinimal_full"]][["count_data"]] <- counts
 
-# now subsetting donor scores 
+# now subsetting donor scores
 # covid
 pbmc_container_covid$tucker_results[[1]] <- pbmc_container_covid$tucker_results[[1]][as.character(cvd_dnr_keep),]
 # sle
@@ -1379,9 +1389,9 @@ all_res <- lapply(1:length(betas_diff_full),function(x){
 
   res$Z <- abs(diff_vals**2) # TESTING ONLY
   # res$Z <- abs(diff_vals**2.5) # TESTING ONLY
-  
+
   res$padj <- rep(1,length(diff_vals))
-  
+
   # sort by absolute value score
   res <- res[order(abs(res$Z),decreasing = TRUE),]
   res_outer <- list(res)
@@ -1391,7 +1401,7 @@ all_res <- lapply(1:length(betas_diff_full),function(x){
 names(all_res) <- names(betas_diff_full)
 
 cao <- cacoa::Cacoa$new(
-  NULL, sample.groups=as.factor(c('ctrl','test')), 
+  NULL, sample.groups=as.factor(c('ctrl','test')),
   cell.groups=as.factor(c('ct1','ct2')),
   sample.per.cell=as.factor(c('1','2')),
   target.level='test', ref.level='ctrl', n.cores=5, verbose=FALSE
@@ -1411,12 +1421,12 @@ all_res <- lapply(1:length(betas_diff_sub),function(x){
   res <- as.data.frame(matrix(ncol=3,nrow=length(diff_vals)))
   colnames(res) <- c('padj','Z','Gene')
   res$Gene <- names(diff_vals)
-  
+
   res$Z <- abs(diff_vals**2) # TESTING ONLY
   # res$Z <- abs(diff_vals**2.5) # TESTING ONLY
-  
+
   res$padj <- rep(1,length(diff_vals))
-  
+
   # sort by absolute value score
   res <- res[order(abs(res$Z),decreasing = TRUE),]
   res_outer <- list(res)
@@ -1426,7 +1436,7 @@ all_res <- lapply(1:length(betas_diff_sub),function(x){
 names(all_res) <- names(betas_diff_sub)
 
 cao <- cacoa::Cacoa$new(
-  NULL, sample.groups=as.factor(c('ctrl','test')), 
+  NULL, sample.groups=as.factor(c('ctrl','test')),
   cell.groups=as.factor(c('ct1','ct2')),
   sample.per.cell=as.factor(c('1','2')),
   target.level='test', ref.level='ctrl', n.cores=5, verbose=FALSE
@@ -1445,7 +1455,7 @@ gsea_sub <- cao[["test.results"]][["GSEA"]][["res"]]
 for (ct in names(gsea_full)) {
   gsea_full_ct <- gsea_full[[ct]][['BP']]
   gsea_sub_ct <- gsea_sub[[ct]][['BP']]
-  
+
   gsea_full_ct <- gsea_full_ct[gsea_full_ct$pvalue<.05,]
   gsea_sub_ct <- gsea_sub_ct[gsea_sub_ct$pvalue<.05,]
   orig_sets <- gsea_full_ct$Description
@@ -1516,11 +1526,11 @@ for (ct in names(cao[["test.results"]][["GSEA"]][["res"]])) {
   genes1 <- genes[genes %in% names(betas_diff_full[[ct]])]
   genes2 <- genes[genes %in% names(betas_diff_sub[[ct]])]
   genes <- intersect(genes1,genes2)
-  
+
   other_genes1 <- names(betas_diff_full[[ct]])[!(betas_diff_full[[ct]] %in% genes)]
   other_genes2 <- names(betas_diff_sub[[ct]])[!(betas_diff_sub[[ct]] %in% genes)]
   other_genes <- intersect(other_genes1,other_genes2)
-  
+
   # trying without squaring...
   df1 <- cbind.data.frame(betas_diff_full[[ct]][genes],betas_diff_sub[[ct]][genes],rep('le_genes',length(genes)))
   colnames(df1) <- c('full','sub','type')
@@ -1528,19 +1538,19 @@ for (ct in names(cao[["test.results"]][["GSEA"]][["res"]])) {
                           betas_diff_sub[[ct]][other_genes],rep('other_genes',length(other_genes)))
   colnames(df2) <- c('full','sub','type')
   # df3 <- rbind.data.frame(df1,df2)
-  
+
   if (is.null(df1_total)) {
     df1_total <- df1
   } else {
     df1_total <- rbind.data.frame(df1_total,df1)
   }
-  
+
   if (is.null(df2_total)) {
     df2_total <- df2
   } else {
     df2_total <- rbind.data.frame(df2_total,df2)
   }
-  
+
 }
 
 
@@ -1569,3 +1579,13 @@ p <- ggplot(df2_total,aes(x=full,y=sub,color=type)) +
 #     width = 8, height = 5)
 p
 # dev.off()
+
+
+
+
+
+
+
+
+
+

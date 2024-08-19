@@ -1,6 +1,3 @@
-.libPaths(c("/home/jmitchel/R/x86_64-pc-linux-gnu-library/4.0", .libPaths()))
-.libPaths(c("/home/jmitchel/R/x86_64-pc-linux-gnu-library/4.1", .libPaths()))
-.libPaths(c("/home/jmitchel/R/x86_64-pc-linux-gnu-library/4.2", .libPaths()))
 
 library(MASS)
 library(Seurat)
@@ -357,7 +354,7 @@ mofa_model <- MOFA2::run_mofa(MOFAobject, outfile=NULL)
 
 
 
-## plotting the donor scores correlatino from MOFA to scITD
+## plotting the donor scores correlation from MOFA to scITD
 d_meta <- unique(pb_meta[,'donor_id',drop=FALSE])
 rownames(d_meta) <- d_meta$donor_id
 colnames(d_meta)[1] <- c('sample')
@@ -495,7 +492,11 @@ dev.off()
 ##### clinical association tests
 dscore_dat <- readRDS('/home/jmitchel/data/scITD_sim_res/SLE_dsc_compare.rds')
 
+# reload the main sle dataset to get additional metadata
+pbmc_container <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_container_w_decomp.rds')
+
 scITD_dsc <- dscore_dat[[1]]
+scITD_dsc[,1] <- scITD_dsc[,1] * (-1)
 dial_dscores <- dscore_dat[[2]]
 mofa_dsc_melt <- dscore_dat[[3]]
 PCA_dsc <- dscore_dat[[4]]
@@ -585,12 +586,19 @@ get_assoc_auc <- function(var_dat_use,dat,factor_use,var_use) {
 
 get_assoc_neph_abs_auc <- function(var_dat_use,dat,factor_use) {
   d_both <- intersect(rownames(dat),rownames(var_dat_use))
-  tmp <- cbind.data.frame(dat[d_both,factor_use],var_dat_use[d_both,'acrantidsdna'])
-  colnames(tmp) <- c('dsc','myvar')
+  d_both <- intersect(d_both,rownames(scITD_dsc))
+  d_both <- intersect(d_both,rownames(meds))
+  tmp <- cbind.data.frame(dat[d_both,factor_use],scITD_dsc[d_both,1],meds[d_both,'prednisone'])
+  colnames(tmp) <- c('dsc','dsc_f1','prednisone')
   tmp <- cbind.data.frame(tmp,var_dat_use[d_both,'crflupusneph'])
-  colnames(tmp)[3] <- 'neph'
-  tmp <- tmp[tmp$myvar==1,] # selecting only patients with dsdna here
+  colnames(tmp)[4] <- 'neph'
   
+  # subset to only donors with high IFN factor
+  tmp <- tmp[tmp$dsc_f1>0,]
+  
+  tmp$neph <- as.factor(tmp$neph)
+  
+  # now compute AUC separately for donors on/off prednisone and average them
   pROC <- roc(tmp$neph,tmp$dsc,
               smoothed = TRUE,
               plot=FALSE, AUC=TRUE)
@@ -599,11 +607,13 @@ get_assoc_neph_abs_auc <- function(var_dat_use,dat,factor_use) {
   ## getting bootstrap se for the auc here
   boot_auc_all <- c()
   for (i in 1:1000) {
-    tmp2 <- tmp[sample(1:nrow(tmp),replace = TRUE),]
-    pROC <- roc(tmp2$neph,tmp2$dsc,
+    tmp_resamp <- tmp[sample(1:nrow(tmp),replace = TRUE),]
+    
+    pROC <- roc(tmp_resamp$neph,tmp_resamp$dsc,
                 smoothed = TRUE,
                 plot=FALSE, AUC=TRUE)
     boot_auc <- pROC[["auc"]]
+    
     boot_auc_all <- c(boot_auc_all,boot_auc)
   }
   auc_se <- sd(boot_auc_all)
@@ -909,7 +919,7 @@ library(cowplot)
 
 ### Figure 3b bottom
 fig <- plot_grid(plotlist=list(p1,p2,p3,p4,p5,p6),nrow=1,rel_widths = c(1,1,1,1,1,1.5))
-pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/method_compare_meta5.pdf", useDingbats = FALSE,
+pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/method_compare_meta6.pdf", useDingbats = FALSE,
     width = 15, height = 5)
 fig
 dev.off()

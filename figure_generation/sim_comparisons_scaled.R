@@ -1,6 +1,3 @@
-.libPaths(c("/home/jmitchel/R/x86_64-pc-linux-gnu-library/4.0", .libPaths()))
-.libPaths(c("/home/jmitchel/R/x86_64-pc-linux-gnu-library/4.1", .libPaths()))
-.libPaths(c("/home/jmitchel/R/x86_64-pc-linux-gnu-library/4.2", .libPaths()))
 
 library(MASS)
 library(DIALOGUE)
@@ -14,7 +11,7 @@ library(ggplot2)
 library(dplyr)
 library(MOFAcellulaR)
 library(devtools)
-load_all('/home/jmitchel/splatter') ### need to load splatter package with modified file found in misc/splatPop-simulate.R
+load_all('/home/jmitchel/splatter') ### need to load splatter package with modified file found in /scITD-Analysis/misc/splatPop-simulate.R
 library(reticulate)
 reticulate::use_condaenv("sandbox", required=TRUE)
 
@@ -380,7 +377,7 @@ for (param_ndx in 1:length(param_range)) {
 
     ## make a parameters object
     params_obj <- newSplatPopParams(similarity.scale = param_val, # used 20 with other changes
-                                    lib.loc = 8, ### TRYING WITH SMALLER LIB SIZES
+                                    lib.loc = 8,
                                     condition.prob = c(.5,.5), # donors split equally between conditions
                                     cde.prob = c(0,.1), # .1 is my default
                                     cde.downProb = c(0,.5),
@@ -506,10 +503,6 @@ for (param_ndx in 1:length(param_range)) {
 # saveRDS(list(res_auc,res_rsq),file='/home/jmitchel/data/scITD_sim_res/sim_res14.rds') # changing donor similarity param, using different random effects per cell type, realistic lib sizes, using fewer PCs for dialoge
 
 
-
-.libPaths(c("/home/jmitchel/R/x86_64-pc-linux-gnu-library/4.0", .libPaths()))
-.libPaths(c("/home/jmitchel/R/x86_64-pc-linux-gnu-library/4.1", .libPaths()))
-.libPaths(c("/home/jmitchel/R/x86_64-pc-linux-gnu-library/4.2", .libPaths()))
 
 library(cowplot)
 library(ggplot2)
@@ -715,6 +708,172 @@ fig1 <- plot_grid(p1,p2,nrow=1)
 pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/sim_dialogue_10MCP.pdf", useDingbats = FALSE,
     width = 8, height = 2.75)
 fig1
+dev.off()
+
+
+
+
+
+
+
+
+
+
+#### generating a simulation to show as an example in figure S6
+n_processes <- 2 # keeping this constant for now
+n_ctype <- 2
+n_iter <- 20
+share_process_genes <- FALSE
+sep_ct_r_effects <- TRUE
+param_range <- c(1,6,11,16,21) # for different donor-donor similarity
+params_obj <- newSplatPopParams(similarity.scale = 11, 
+                                lib.loc = 8,
+                                condition.prob = c(.5,.5), # donors split equally between conditions
+                                cde.prob = c(0,.1), # .1 is my default
+                                cde.downProb = c(0,.5),
+                                cde.facLoc = .1,
+                                cde.facScale = .5,
+                                de.prob = .3,
+                                de.facLoc = 2, # cross cell type de is stronger than condition de
+                                de.facScale = 0.5,
+                                group.prob = c(.5,.5),
+                                batchCells = 100, # total cells per donor
+                                batch.size = 50, # 50 donors
+                                nGenes=500, # 500 genes
+                                eqtl.n = 0,
+                                seed=5678)
+sim_dat_all <- generate_sim(params_obj,share_process_genes,n_processes,n_ctype,sep_ct_r_effects)
+
+# saveRDS(sim_dat_all,file='/home/jmitchel/data/scITD_sim_res/example_sim_vignette.rds')
+sim_dat_all <- readRDS(file='/home/jmitchel/data/scITD_sim_res/example_sim_vignette.rds')
+
+sim.sc <- sim_dat_all[[1]]
+de_gene_info <- sim_dat_all[[2]]
+meta_include <- sim_dat_all[[3]]
+
+## now running scITD on the simulation
+ctypes_use <- unique(meta_include$ctypes)
+param_list <- initialize_params(ctypes_use = ctypes_use,
+                                ncores = 5, rand_seed = 10)
+
+sim_container <- make_new_container(count_data=counts(sim.sc), meta_data=meta_include, params=param_list)
+
+sim_container <- form_tensor(sim_container, donor_min_cells=3,
+                             norm_method='trim', scale_factor=10000,
+                             vargenes_method='norm_var_pvals', vargenes_thresh=1,
+                             scale_var = TRUE, var_scale_power = 0)
+
+sim_container <- run_tucker_ica(sim_container, ranks=c(n_processes,n_processes*n_ctype),
+                                tucker_type = 'regular', rotation_type = 'hybrid')
+
+
+sim_seurat <- CreateSeuratObject(counts(sim.sc),meta.data = meta_include)
+sim_seurat <- NormalizeData(sim_seurat)
+sim_seurat <- ScaleData(sim_seurat)
+sim_seurat <- RunPCA(sim_seurat,features = rownames(sim_seurat))
+sim_seurat <- FindNeighbors(sim_seurat, dims = 1:5)
+sim_seurat <- RunUMAP(sim_seurat, dims = 1:10)
+sim_seurat@meta.data$ctypes <- factor(sim_seurat@meta.data$ctypes,levels=c('Group1','Group2'))
+levels(sim_seurat@meta.data$ctypes) <- c('Cell type 1','Cell type 2')
+sim_seurat@meta.data$Process1 <- factor(sim_seurat@meta.data$Process1,levels=c('Condition1','Condition2'))
+levels(sim_seurat@meta.data$Process1) <- c('Pattern 1 high','Pattern 1 low')
+sim_seurat@meta.data$Process2 <- factor(sim_seurat@meta.data$Process2,levels=c('Condition1','Condition2'))
+levels(sim_seurat@meta.data$Process2) <- c('Pattern 2 high','Pattern 2 low')
+
+p1 <- DimPlot(sim_seurat, reduction = "umap",group.by = 'ctypes') + 
+  xlab('') +
+  ylab('') +
+  ggtitle('Simulated scRNA-seq (n=50 donors)') +
+  labs(color='Cell type') +
+  scale_colour_brewer(palette = "Set2") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5),legend.position="bottom",
+        axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(), axis.ticks.y = element_blank())
+p2 <- DimPlot(sim_seurat, reduction = "umap",group.by = 'Process1') +
+  xlab('') +
+  ylab('') +
+  ggtitle('Multicellular expression pattern 1\nground truth') +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.title= element_blank(),
+        axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(), axis.ticks.y = element_blank())
+
+p3 <- DimPlot(sim_seurat, reduction = "umap",group.by = 'Process2') +
+  xlab('') +
+  ylab('') +
+  scale_colour_brewer(palette = "Set2") +
+  ggtitle('Multicellular expression pattern 2\nground truth') +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.title= element_blank(),
+        axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(), axis.ticks.y = element_blank())
+
+
+p1
+p2
+p3
+
+fig1 <- plot_grid(p2,p3,nrow = 1)
+library(cowplot)
+### Figure S6a
+pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/sim_vignette1.pdf", useDingbats = FALSE,
+    width = 8, height = 2.75)
+fig1
+dev.off()
+
+
+
+sim_container <- determine_ranks_tucker(sim_container, max_ranks_test=c(7,10),
+                                         shuffle_level='cells', shuffle_within=NULL,
+                                         num_iter=50,
+                                         norm_method='trim',
+                                         scale_factor=10000,
+                                         scale_var=TRUE,
+                                         var_scale_power=0)
+
+### Figure S6e
+pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/sim_rank_determination.pdf", useDingbats = FALSE,
+    width = 7, height = 4.5)
+sim_container$plots$rank_determination_plot +  scale_colour_brewer(palette = "Set2")
+
+dev.off()
+
+
+sim_container <- get_min_sig_genes(sim_container, donor_rank_range=c(2:5), gene_ranks=4,
+                                    use_lm=TRUE, tucker_type='regular',
+                                    rotation_type='hybrid',
+                                    n.cores = 5, thresh=0.05)
+
+p <- sim_container[["plots"]][["min_sig_genes"]]
+p <- p + 
+  xlab('Total number of factors') +
+  scale_x_continuous(breaks = seq(0, 14, by = 1)) +
+  theme_bw()
+p
+
+### Figure S6g
+pdf("/home/jmitchel/figures/scITD_revision_figs3/sim_min_sig_genes.pdf", width = 4, height = 4)
+p
+dev.off()
+
+
+
+
+sim_container <- run_stability_analysis(sim_container,ranks=c(5,n_processes*n_ctype),n_iterations=500,subset_type='subset', sub_prop=.7)
+
+### Figure S6f top
+pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/sim_stability_dsc.pdf", useDingbats = FALSE,
+    width = 4, height = 3.5)
+sim_container$plots$stability_plot_dsc + theme_bw()
+dev.off()
+
+### Figure S6f bottom
+pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/sim_stability_lds.pdf", useDingbats = FALSE,
+    width = 4, height = 3.5)
+sim_container$plots$stability_plot_lds + theme_bw()
 dev.off()
 
 

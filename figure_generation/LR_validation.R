@@ -88,8 +88,8 @@ pbmc_container <- plot_donor_matrix(pbmc_container,
 # just to check that everything is as expected up to this point
 pbmc_container$plots$donor_matrix
 
-
-pbmc_container <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_container_w_decomp.rds')
+# # or load the already generated object
+# pbmc_container <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_container_w_decomp.rds')
 
 
 # function to get nichenet results for a factor
@@ -890,9 +890,5 @@ dev.off()
 # saveRDS(tmp,file='/home/jmitchel/data/lupus_data/lr_jaccard_table2.rds')
 
 
-# things changed from previously
-# type of enrichment test
-# number of results included from the tests
-# identification of target genes
 
 

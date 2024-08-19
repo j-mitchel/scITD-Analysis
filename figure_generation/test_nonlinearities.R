@@ -1,38 +1,7 @@
-.libPaths(c("/home/jmitchel/R/x86_64-pc-linux-gnu-library/4.0", .libPaths()))
-.libPaths(c("/home/jmitchel/R/x86_64-pc-linux-gnu-library/4.1", .libPaths()))
-.libPaths(c("/home/jmitchel/R/x86_64-pc-linux-gnu-library/4.2", .libPaths()))
 
 library(pROC)
 library(devtools)
 load_all('/home/jmitchel/splatter')
-
-# n_samples <- 10000
-# r_vals1 <- sample(10:100, n_samples, replace=TRUE)
-# # r_vals1 <- sample(5:10, n_samples, replace=TRUE)
-# r_vals2 <- r_vals1**(2) + rnorm(n_samples,sd = 1)
-# counts1 <- rpois(n_samples,lambda=r_vals1)
-# # counts2 <- rpois(n_samples,lambda=r_vals2)
-# counts2 <- rpois(n_samples,lambda=r_vals2)
-# 
-# plot(counts1,counts2)
-# plot(log(counts1),log(counts2))
-# 
-# n_samples <- 10000
-# r_vals1 <- sample(10:15, n_samples, replace=TRUE) + rnorm(n_samples,sd = 1)
-# r_vals1[1:(n_samples/2)] <- r_vals1[1:(n_samples/2)]**(2)
-# samp_ndx <- sample(1:n_samples,n_samples/2)
-# r_vals1[samp_ndx] <- r_vals1[samp_ndx]**(.5)
-# r_vals2 <- sample(10:15, n_samples, replace=TRUE) + rnorm(n_samples,sd = 1)
-# r_vals2[1:(n_samples/2)] <- r_vals2[1:(n_samples/2)]**(1)
-# r_vals2[samp_ndx] <- r_vals2[samp_ndx]**(1.5)
-# counts1 <- rpois(n_samples,lambda=r_vals1)
-# counts2 <- rpois(n_samples,lambda=r_vals2)
-# 
-# plot(counts1,counts2)
-# plot(r_vals1,r_vals2)
-
-
-
 
 
 generate_sim <- function(param_obj,share_process_genes,n_processes,n_ctype,sep_ct_r_effects,nonlinear) {

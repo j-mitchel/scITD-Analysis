@@ -1,8 +1,4 @@
 
-.libPaths(c("/home/jmitchel/R/x86_64-pc-linux-gnu-library/4.0", .libPaths()))
-.libPaths(c("/home/jmitchel/R/x86_64-pc-linux-gnu-library/4.1", .libPaths()))
-.libPaths(c("/home/jmitchel/R/x86_64-pc-linux-gnu-library/4.2", .libPaths()))
-
 library(Seurat)
 library(MatrixEQTL)
 library(sccore)
@@ -19,7 +15,7 @@ source('/home/jmitchel/smr/plot/plot_SMR.r')
 # load the SNP data
 vcf_mat <- readRDS(file='/home/jmitchel/data/lupus_data/lupus_total_vcf.rds')
 
-# load up the lupus dataset: see preprocessing/lupus_preprocessing.R 
+# load up the lupus dataset: see preprocessing/lupus_preprocessing.R
 # for code used to generate this object
 pbmc <- readRDS('/home/jmitchel/data/lupus_data/lupus_subsetted_seurat_v3.rds')
 
@@ -272,7 +268,7 @@ loc2 <- locus(pr_res, gene = 'ICOSLG', flank = 5e4,LD = "r2",
               ens_db = "EnsDb.Hsapiens.v75")
 # p2 <- locus_plot(loc2,filter_gene_biotype = "protein_coding")
 
-### Figure 4b 
+### Figure 4b
 pdf("/home/jmitchel/figures/scITD_revision_figs2/MR_plot_tmp.pdf", width = 5, height = 3)
 oldpar <- set_layers(2)
 scatter_plot(loc1, xticks = FALSE,index_snp=index_snp_show)
@@ -452,7 +448,7 @@ colnames(pr_res) <- c('SNP','A1','A2','freq','b','se','p','n')
 # write.table(pr_res,file='/home/jmitchel/data/lupus_data/for_smr/pr_res.ma',sep = ' ',row.names = FALSE,quote = FALSE)
 
 ## eQTL data needs to have slightly different format
-# Columns are chromosome, SNP, genetic distance (can be any arbitary value since it will not be used in the SMR analysis), 
+# Columns are chromosome, SNP, genetic distance (can be any arbitary value since it will not be used in the SMR analysis),
 # basepair position, the effect (coded) allele, the other allele and frequency of the effect allele
 e_res$chromosome <- sapply(rownames(e_res),function(x){
   strsplit(x,split=':')[[1]][[1]]
@@ -478,9 +474,9 @@ colnames(e_res2) <- c('SNP','gene','beta','t-stat','p-value','FDR')
 # write.table(e_res2,file='/home/jmitchel/data/lupus_data/for_smr/e_res_ss.txt',sep = ' ',row.names = FALSE,quote = FALSE)
 
 # run in command line
-# ./smr --eqtl-summary /home/jmitchel/data/lupus_data/for_smr/e_res_ss.txt --matrix-eqtl-format --make-besd --out /home/jmitchel/data/lupus_data/for_smr/make_besd/e_res 
+# ./smr --eqtl-summary /home/jmitchel/data/lupus_data/for_smr/e_res_ss.txt --matrix-eqtl-format --make-besd --out /home/jmitchel/data/lupus_data/for_smr/make_besd/e_res
 # then, moved the besd file to /for/smr/
-# ./smr --bfile /home/jmitchel/data/lupus_data/for_smr/plink --gwas-summary /home/jmitchel/data/lupus_data/for_smr/pr_res.ma --beqtl-summary /home/jmitchel/data/lupus_data/for_smr/e_res --peqtl-smr .05 --out /home/jmitchel/data/lupus_data/for_smr/smr_out --thread-num 1 
+# ./smr --bfile /home/jmitchel/data/lupus_data/for_smr/plink --gwas-summary /home/jmitchel/data/lupus_data/for_smr/pr_res.ma --beqtl-summary /home/jmitchel/data/lupus_data/for_smr/e_res --peqtl-smr .05 --out /home/jmitchel/data/lupus_data/for_smr/smr_out --thread-num 1
 
 ## now trying this but with subsets of SNPs for each peak
 snps_pos_peak1 <- c(45590000,45640000)
@@ -496,7 +492,7 @@ e_res2_p1 <- e_res2[ndx_keep,]
 
 # ./smr --eqtl-summary /home/jmitchel/data/lupus_data/for_smr/e_res_ss_p1.txt --matrix-eqtl-format --make-besd --out /home/jmitchel/data/lupus_data/for_smr/make_besd/e_res_p1
 # then, moved the besd file to /for/smr/. Also needed to make copy of e_res.epi to e_res_p1.epi
-# ./smr --bfile /home/jmitchel/data/lupus_data/for_smr/plink --gwas-summary /home/jmitchel/data/lupus_data/for_smr/pr_res_p1.ma --beqtl-summary /home/jmitchel/data/lupus_data/for_smr/e_res_p1 --peqtl-smr .05 --out /home/jmitchel/data/lupus_data/for_smr/smr_out_p1 --thread-num 1 
+# ./smr --bfile /home/jmitchel/data/lupus_data/for_smr/plink --gwas-summary /home/jmitchel/data/lupus_data/for_smr/pr_res_p1.ma --beqtl-summary /home/jmitchel/data/lupus_data/for_smr/e_res_p1 --peqtl-smr .05 --out /home/jmitchel/data/lupus_data/for_smr/smr_out_p1 --thread-num 1
 
 
 ndx_keep <- which(e_res$pos>snps_pos_peak2[1] & e_res$pos<snps_pos_peak2[2])
@@ -509,7 +505,7 @@ e_res2_p2 <- e_res2[ndx_keep,]
 
 # ./smr --eqtl-summary /home/jmitchel/data/lupus_data/for_smr/e_res_ss_p2.txt --matrix-eqtl-format --make-besd --out /home/jmitchel/data/lupus_data/for_smr/make_besd/e_res_p2
 # then, moved the besd file to /for/smr/. Also needed to make copy of e_res.epi to e_res_p1.epi
-# ./smr --bfile /home/jmitchel/data/lupus_data/for_smr/plink --gwas-summary /home/jmitchel/data/lupus_data/for_smr/pr_res_p2.ma --beqtl-summary /home/jmitchel/data/lupus_data/for_smr/e_res_p2 --peqtl-smr .05 --out /home/jmitchel/data/lupus_data/for_smr/smr_out_p2 --thread-num 1 
+# ./smr --bfile /home/jmitchel/data/lupus_data/for_smr/plink --gwas-summary /home/jmitchel/data/lupus_data/for_smr/pr_res_p2.ma --beqtl-summary /home/jmitchel/data/lupus_data/for_smr/e_res_p2 --peqtl-smr .05 --out /home/jmitchel/data/lupus_data/for_smr/smr_out_p2 --thread-num 1
 
 
 ### for plotting results
@@ -519,7 +515,7 @@ image.scale <- function(z, zlim, col = heat.colors(12),
     if(length(breaks) != (length(col)+1)){stop("must have one more break than colour")}
   }
   if(missing(breaks) & !missing(zlim)){
-    breaks <- seq(zlim[1], zlim[2], length.out=(length(col)+1)) 
+    breaks <- seq(zlim[1], zlim[2], length.out=(length(col)+1))
   }
   if(missing(breaks) & missing(zlim)){
     zlim <- range(z, na.rm=TRUE)
@@ -537,7 +533,7 @@ image.scale <- function(z, zlim, col = heat.colors(12),
   if(!horiz){YLIM<-range(breaks); XLIM<-c(0,1)}
   if(missing(xlim)) xlim=XLIM
   if(missing(ylim)) ylim=YLIM
-  plot(1,1,t="n",ylim=ylim, xlim=xlim, xaxt=xaxt, yaxt=yaxt, xaxs="i", yaxs="i", ...)  
+  plot(1,1,t="n",ylim=ylim, xlim=xlim, xaxt=xaxt, yaxt=yaxt, xaxs="i", yaxs="i", ...)
   for(i in seq(poly)){
     if(horiz){
       polygon(poly[[i]], c(0,0,1,1), col=col[i], border=NA)

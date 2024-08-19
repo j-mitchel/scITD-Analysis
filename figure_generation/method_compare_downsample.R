@@ -1,6 +1,3 @@
-.libPaths(c("/home/jmitchel/R/x86_64-pc-linux-gnu-library/4.0", .libPaths()))
-.libPaths(c("/home/jmitchel/R/x86_64-pc-linux-gnu-library/4.1", .libPaths()))
-.libPaths(c("/home/jmitchel/R/x86_64-pc-linux-gnu-library/4.2", .libPaths()))
 
 library(MASS)
 library(tictoc)
@@ -416,9 +413,7 @@ for (i in 1:n_iter) {
   runtime_res <- rbind.data.frame(runtime_res,cbind.data.frame(method_runtimes,method_indicator))
 }
 
-# saveRDS(list(res_all,runtime_res),file='/home/jmitchel/data/scITD_sim_res/SLE_downsamp_compare.rds') # accidentally downsampled 95% of donors - also mistakenly resampled same donors
-# saveRDS(list(res_all,runtime_res),file='/home/jmitchel/data/scITD_sim_res/SLE_downsamp_compare2.rds') # downsampling 85% of donors - actually still had resampling problem
-# saveRDS(list(res_all,runtime_res),file='/home/jmitchel/data/scITD_sim_res/SLE_downsamp_compare3.rds') # downsampling 85% of donors - fixed resampling problem
+# saveRDS(list(res_all,runtime_res),file='/home/jmitchel/data/scITD_sim_res/SLE_downsamp_compare3.rds') # downsampling 85% of donors
 
 
 

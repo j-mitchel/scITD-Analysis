@@ -2,6 +2,7 @@
 library(scITD)
 library(ComplexHeatmap)
 library(ggplot2)
+library(ggrastr)
 library(Seurat)
 library(circlize)
 
@@ -23,23 +24,23 @@ embed$dnr_stim <- factor(embed$dnr_stim,levels=as.character(c(1:16)))
 
 # create embedding plot
 myembed1 <- ggplot(embed,aes(x=tsne1,y=tsne2,color=dnr_stim)) +
-  geom_point() +
+  geom_point_rast() +
   labs(color = "Sample") +
   theme_bw()
 
 ### Figure 1b top
-# pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/cd4_cM_dnr_embed.pdf", useDingbats = FALSE,
+# pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/cd4_cM_dnr_embed.pdf", useDingbats = FALSE,
 #     width = 6, height = 4)
 myembed1
 # dev.off()
 
 myembed2 <- ggplot(embed,aes(x=tsne1,y=tsne2,color=stim)) +
-  geom_point() +
+  geom_point_rast() +
   labs(color = "Group") +
   theme_bw()
 
 ### Figure 1b bottom
-# pdf(file = "/home/jmitchel/figures/scITD_revision_figs2/cd4_cM_stim_embed.pdf", useDingbats = FALSE,
+# pdf(file = "/home/jmitchel/figures/scITD_revision_figs3/cd4_cM_stim_embed.pdf", useDingbats = FALSE,
 #     width = 6, height = 4)
 myembed2
 # dev.off()
